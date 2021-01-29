@@ -27,6 +27,7 @@ endef
 
 define Build/Compile
 	$(CP) ./*.sh $(PKG_BUILD_DIR)
+	$(CP) ./*.json $(PKG_BUILD_DIR)
 endef
 
 define Package/$(PKG_NAME)/preinst
