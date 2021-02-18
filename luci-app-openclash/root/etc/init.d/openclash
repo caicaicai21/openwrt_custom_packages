@@ -936,7 +936,7 @@ do_run_file()
       exit 0
    fi
    
-   if ! capsh --is-uid=0 >/dev/null || ! capsh --has-ambient >/dev/null; then
+   if ! capsh --has-ambient >/dev/null; then
      echo "错误：Capsh异常，请尝试重新安装依赖【libcap】和相应的Capsh库，终止启动..." >$START_LOG
      echo "${LOGTIME} Error: Could Not Load The Capsh Library, Please Verify The Capsh Shell Library Work Well" >> $LOG_FILE
      echo "${LOGTIME} Tip: You Could Download And Re-Install The libcap & libcap-bin Library From The Address Below:" >> $LOG_FILE
@@ -980,7 +980,7 @@ start_run_core()
       chown nobody:nogroup /etc/openclash/core/* 2>/dev/null
       #使用nobody启动内核方便代理路由自身流量
       capabilties="cap_sys_resource,cap_dac_override,cap_net_raw,cap_net_bind_service,cap_net_admin"
-      capsh --caps="${capabilties}+eip" -- -c "capsh --user=nobody --addamb='${capabilties}' -- -c 'nohup $CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1 &'" >> $LOG_FILE 2>&1
+      capsh --caps="${capabilties}+eip" -- -c "capsh --user=nobody --addamb='' -- -c 'nohup $CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1 &'" >> $LOG_FILE 2>&1
    fi
    uci set openclash.config.config_reload=1 2>/dev/null
    uci commit openclash
