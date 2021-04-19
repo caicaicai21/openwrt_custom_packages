@@ -41,7 +41,7 @@ check_latest_version(){
 					doupx
 					mkdir -p "/tmp/AdGuardHomeupdate/AdGuardHome" >/dev/null 2>&1
 					rm -fr /tmp/AdGuardHomeupdate/AdGuardHome/${binpath##*/}
-					/tmp/upx-${upx_latest_ver}-${Arch}_linux/upx $upxflag $binpath -o /tmp/AdGuardHomeupdate/AdGuardHome/${binpath##*/}
+					$upx_bin $upxflag $binpath -o /tmp/AdGuardHomeupdate/AdGuardHome/${binpath##*/}
 					rm -rf /tmp/upx-${upx_latest_ver}-${Arch}_linux
 					/etc/init.d/AdGuardHome stop nobackup
 					rm $binpath
@@ -54,6 +54,7 @@ check_latest_version(){
 	fi
 }
 doupx(){
+	which upx && upx_bin="upx" && echo -e "find local upx" && return
 	Archt="$(opkg info kernel | grep Architecture | awk -F "[ _]" '{print($2)}')"
 	case $Archt in
 	"i386")
@@ -113,6 +114,7 @@ doupx(){
 		EXIT 1
 	fi
 	rm /tmp/upx-${upx_latest_ver}-${Arch}_linux.tar.xz
+	upx_bin="$(/tmp/upx-${upx_latest_ver}-${Arch}_linux/upx)"
 }
 doupdate_core(){
 	echo -e "Updating core..." 
@@ -194,7 +196,7 @@ doupdate_core(){
 	if [ -n "$upxflag" ]; then
 		echo -e "start upx may take a long time" 
 		doupx
-		/tmp/upx-${upx_latest_ver}-${Arch}_linux/upx $upxflag $downloadbin
+		$upx_bin $upxflag $downloadbin
 		rm -rf /tmp/upx-${upx_latest_ver}-${Arch}_linux
 	fi
 	echo -e "start copy" 
