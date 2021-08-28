@@ -10,8 +10,8 @@ local fs = require "luci.openclash"
 local uci = require "luci.model.uci".cursor()
 
 m = SimpleForm("openclash", translate("Other Rule Providers List"))
-m.description=translate("规则项目: ConnersHua ( https://github.com/DivineEngine/Profiles ) \
-<br/>规则项目: lhie1 ( https://github.com/lhie1/Rules )")
+m.description=translate("Rule Project:").." ConnersHua ( https://github.com/DivineEngine/Profiles )<br/>"..
+translate("Rule Project:").." lhie1 ( https://github.com/lhie1/Rules )"
 m.reset = false
 m.submit = false
 
@@ -29,7 +29,7 @@ o.write = function()
 end
 
 o = a:option(Button, "Apply", " ")
-o.inputtitle = translate("Back Configurations")
+o.inputtitle = translate("Back Settings")
 o.inputstyle = "reset"
 o.write = function()
   HTTP.redirect(DISP.build_url("admin", "services", "openclash", "rule-providers-settings"))
