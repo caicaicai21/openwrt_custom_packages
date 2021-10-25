@@ -1,6 +1,7 @@
 #!/bin/sh
 . /lib/functions.sh
 . /usr/share/openclash/ruby.sh
+. /usr/share/openclash/log.sh
 
 set_lock() {
    exec 886>"/tmp/lock/openclash_proxies_set.lock" 2>/dev/null
@@ -12,7 +13,6 @@ del_lock() {
    rm -rf "/tmp/lock/openclash_proxies_set.lock"
 }
 
-START_LOG="/tmp/openclash_start.log"
 SERVER_FILE="/tmp/yaml_servers.yaml"
 PROXY_PROVIDER_FILE="/tmp/yaml_provider.yaml"
 servers_if_update=$(uci get openclash.config.servers_if_update 2>/dev/null)
@@ -113,24 +113,24 @@ yml_proxy_provider_set()
       fi
    fi
    
-   echo "正在写入【$type】-【$name】代理集到配置文件【$CONFIG_NAME】..." >$START_LOG
+   LOG_OUT "Start Writing【$CONFIG_NAME - $type - $name】Proxy-provider To Config File..."
    echo "$name" >> /tmp/Proxy_Provider
    
 cat >> "$PROXY_PROVIDER_FILE" <<-EOF
   $name:
     type: $type
-    path: $path
+    path: "$path"
 EOF
    if [ ! -z "$provider_url" ]; then
 cat >> "$PROXY_PROVIDER_FILE" <<-EOF
-    url: $provider_url
+    url: "$provider_url"
     interval: $provider_interval
 EOF
    fi
 cat >> "$PROXY_PROVIDER_FILE" <<-EOF
     health-check:
       enable: $health_check
-      url: $health_check_url
+      url: "$health_check_url"
       interval: $health_check_interval
 EOF
 
@@ -142,7 +142,7 @@ set_alpn()
       return
    fi
 cat >> "$SERVER_FILE" <<-EOF
-      - $1
+      - '$1'
 EOF
 }
 
@@ -166,6 +166,16 @@ cat >> "$SERVER_FILE" <<-EOF
 EOF
 }
 
+set_ws_headers()
+{
+   if [ -z "$1" ]; then
+      return
+   fi
+cat >> "$SERVER_FILE" <<-EOF
+        '$1'
+EOF
+}
+
 #写入服务器节点到配置文件
 yml_servers_set()
 {
@@ -186,6 +196,7 @@ yml_servers_set()
    config_get "obfs_ssr" "$section" "obfs_ssr" ""
    config_get "obfs_param" "$section" "obfs_param" ""
    config_get "obfs_vmess" "$section" "obfs_vmess" ""
+   config_get "obfs_trojan" "$section" "obfs_trojan" ""
    config_get "protocol" "$section" "protocol" ""
    config_get "protocol_param" "$section" "protocol_param" ""
    config_get "host" "$section" "host" ""
@@ -208,6 +219,12 @@ yml_servers_set()
    config_get "h2_path" "$section" "h2_path" ""
    config_get "h2_host" "$section" "h2_host" ""
    config_get "grpc_service_name" "$section" "grpc_service_name" ""
+   config_get "ws_opts_path" "$section" "ws_opts_path" ""
+   config_get "ws_opts_headers" "$section" "ws_opts_headers" ""
+   config_get "max_early_data" "$section" "max_early_data" ""
+   config_get "early_data_header_name" "$section" "early_data_header_name" ""
+   config_get "trojan_ws_path" "$section" "trojan_ws_path" ""
+   config_get "trojan_ws_headers" "$section" "trojan_ws_headers" ""
 
    if [ "$enabled" = "0" ]; then
       return
@@ -258,7 +275,7 @@ yml_servers_set()
          return
       fi
    fi
-   echo "正在写入【$type】-【$name】节点到配置文件【$CONFIG_NAME】..." >$START_LOG
+   LOG_OUT "Start Writing【$CONFIG_NAME - $type - $name】Proxy To Config File..."
    
    if [ "$obfs" != "none" ] && [ -n "$obfs" ]; then
       if [ "$obfs" = "websocket" ]; then
@@ -287,14 +304,14 @@ yml_servers_set()
    fi
    
    if [ ! -z "$custom" ] && [ "$type" = "vmess" ]; then
-      custom="Host: $custom"
+      custom="Host: \"$custom\""
    fi
    
    if [ ! -z "$path" ]; then
       if [ "$type" != "vmess" ]; then
-         path="path: '$path'"
+         path="path: \"$path\""
       elif [ "$obfs_vmess" = "network: ws" ]; then
-         path="ws-path: $path"
+         path="ws-path: \"$path\""
       fi
    fi
 
@@ -303,7 +320,7 @@ yml_servers_set()
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
     cipher: $cipher
     password: "$password"
@@ -321,7 +338,7 @@ cat >> "$SERVER_FILE" <<-EOF
 EOF
         if [ ! -z "$host" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-      host: $host
+      host: "$host"
 EOF
         fi
         if [  "$obfss" = "plugin: v2ray-plugin" ]; then
@@ -360,7 +377,7 @@ if [ "$type" = "ssr" ]; then
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
     cipher: $cipher_ssr
     password: "$password"
@@ -389,7 +406,7 @@ fi
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
     uuid: $uuid
     alterId: $alterId
@@ -412,52 +429,83 @@ EOF
       fi
       if [ ! -z "$servername" ] && [ "$tls" = "true" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    servername: $servername
+    servername: "$servername"
 EOF
       fi
       if [ "$obfs_vmess" != "none" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     $obfs_vmess
 EOF
-         if [ ! -z "$path" ] && [ "$obfs_vmess" = "network: ws" ]; then
+         if [ "$obfs_vmess" = "network: ws" ]; then
+            if [ ! -z "$path" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     $path
 EOF
-         fi
-         if [ ! -z "$custom" ] && [ "$obfs_vmess" = "network: ws" ]; then
+            fi
+            if [ ! -z "$custom" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     ws-headers:
       $custom
 EOF
+            fi
+            if [ -n "$ws_opts_path" ] || [ -n "$ws_opts_headers" ] || [ -n "$max_early_data" ] || [ -n "$early_data_header_name" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+    ws-opts:
+EOF
+               if [ -n "$ws_opts_path" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      path: "$ws_opts_path"
+EOF
+               fi
+               if [ -n "$ws_opts_headers" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      headers:
+EOF
+                  config_list_foreach "$section" "ws_opts_headers" set_ws_headers
+               fi
+               if [ -n "$max_early_data" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      max-early-data: $max_early_data
+EOF
+               fi
+               if [ -n "$early_data_header_name" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      early-data-header-name: "$early_data_header_name"
+EOF
+               fi
+            fi
          fi
-         if [ ! -z "$http_path" ] && [ "$obfs_vmess" = "network: http" ]; then
+         if [ "$obfs_vmess" = "network: http" ]; then
+            if [ ! -z "$http_path" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     http-opts:
       method: "GET"
       path:
 EOF
-            config_list_foreach "$section" "http_path" set_http_path
-         fi
-         if [ "$keep_alive" = "true" ] && [ "$obfs_vmess" = "network: http" ]; then
+               config_list_foreach "$section" "http_path" set_http_path
+            fi
+            if [ "$keep_alive" = "true" ]; then
 cat >> "$SERVER_FILE" <<-EOF
       headers:
         Connection:
           - keep-alive
 EOF
+            fi
          fi
-         
          #h2
-         if [ ! -z "$h2_host" ] && [ "$obfs_vmess" = "network: h2" ]; then
+         if [ "$obfs_vmess" = "network: h2" ]; then
+            if [ ! -z "$h2_host" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     h2-opts:
       host:
 EOF
-            config_list_foreach "$section" "h2_host" set_h2_host
-         fi
-         if [ ! -z "$h2_path" ] && [ "$obfs_vmess" = "network: h2" ]; then
+               config_list_foreach "$section" "h2_host" set_h2_host
+            fi
+            if [ ! -z "$h2_path" ]; then
 cat >> "$SERVER_FILE" <<-EOF
       path: $h2_path
 EOF
+            fi
          fi
          if [ ! -z "$grpc_service_name" ] && [ "$obfs_vmess" = "network: grpc" ]; then
 cat >> "$SERVER_FILE" <<-EOF
@@ -473,17 +521,17 @@ EOF
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
 EOF
       if [ ! -z "$auth_name" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    username: $auth_name
+    username: "$auth_name"
 EOF
       fi
       if [ ! -z "$auth_pass" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    password: $auth_pass
+    password: "$auth_pass"
 EOF
       fi
       if [ ! -z "$udp" ]; then
@@ -508,17 +556,17 @@ EOF
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
 EOF
       if [ ! -z "$auth_name" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    username: $auth_name
+    username: "$auth_name"
 EOF
       fi
       if [ ! -z "$auth_pass" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    password: $auth_pass
+    password: "$auth_pass"
 EOF
       fi
       if [ ! -z "$skip_cert_verify" ]; then
@@ -533,7 +581,7 @@ EOF
       fi
       if [ ! -z "$sni" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    sni: $sni
+    sni: "$sni"
 EOF
       fi
    fi
@@ -543,7 +591,7 @@ EOF
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
     password: "$password"
 EOF
@@ -554,7 +602,7 @@ EOF
    fi
    if [ ! -z "$sni" ]; then
 cat >> "$SERVER_FILE" <<-EOF
-    sni: $sni
+    sni: "$sni"
 EOF
    fi
    if [ ! -z "$alpn" ]; then
@@ -570,9 +618,29 @@ EOF
    fi
    if [ ! -z "$grpc_service_name" ]; then
 cat >> "$SERVER_FILE" <<-EOF
+    network: grpc
     grpc-opts:
       grpc-service-name: "$grpc_service_name"
 EOF
+   fi
+   if [ "$obfs_trojan" = "ws" ]; then
+      if [ -n "$trojan_ws_path" ] || [ -n "$trojan_ws_headers" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+    network: ws
+    ws-opts:
+EOF
+      fi
+      if [ -n "$trojan_ws_path" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      path: "$trojan_ws_path"
+EOF
+      fi
+      if [ -n "$trojan_ws_headers" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+      headers:
+EOF
+         config_list_foreach "$section" "trojan_ws_headers" set_ws_headers
+      fi
    fi
    fi
 
@@ -581,7 +649,7 @@ EOF
 cat >> "$SERVER_FILE" <<-EOF
   - name: "$name"
     type: $type
-    server: $server
+    server: "$server"
     port: $port
     psk: $psk
 EOF
@@ -589,7 +657,7 @@ EOF
 cat >> "$SERVER_FILE" <<-EOF
     obfs-opts:
       mode: $obfs_snell
-      host: $host
+      host: "$host"
 EOF
    fi
    fi
@@ -642,7 +710,7 @@ config_foreach yml_proxy_provider_name_get "proxy-provider"
 #判断是否启用保留配置
 config_foreach new_servers_group_set "config_subscribe"
 #proxy-provider
-echo "开始写入配置文件【$CONFIG_NAME】的代理集信息..." >$START_LOG
+LOG_OUT "Start Writing【$CONFIG_NAME】Proxy-providers Setting..."
 echo "proxy-providers:" >$PROXY_PROVIDER_FILE
 rm -rf /tmp/Proxy_Provider
 config_foreach yml_proxy_provider_set "proxy-provider"
@@ -656,7 +724,7 @@ rm -rf $proxy_provider_name
 #proxy
 rule_sources=$(uci get openclash.config.rule_sources 2>/dev/null)
 create_config=$(uci get openclash.config.create_config 2>/dev/null)
-echo "开始写入配置文件【$CONFIG_NAME】的服务器节点信息..." >$START_LOG
+LOG_OUT "Start Writing【$CONFIG_NAME】Proxies Setting..."
 echo "proxies:" >$SERVER_FILE
 config_foreach yml_servers_set "servers"
 egrep '^ {0,}-' $SERVER_FILE |grep name: |awk -F 'name: ' '{print $2}' |sed 's/,.*//' 2>/dev/null >/tmp/Proxy_Server 2>&1
@@ -670,7 +738,7 @@ rm -rf $servers_name
 
 #一键创建配置文件
 if [ "$rule_sources" = "ConnersHua" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_game_proxy" ]; then
-echo "使用ConnersHua(规则集)规则创建中..." >$START_LOG
+LOG_OUT "Creating By Using Connershua (rule set) Rules..."
 echo "proxy-groups:" >>$SERVER_FILE
 cat >> "$SERVER_FILE" <<-EOF
   - name: Auto - UrlTest
@@ -767,7 +835,7 @@ ${uci_set}Others="Others"
 	${UCI_DEL_LIST}="GlobalTV" >/dev/null 2>&1 && ${UCI_ADD_LIST}="GlobalTV" >/dev/null 2>&1
 }
 elif [ "$rule_sources" = "lhie1" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_game_proxy" ]; then
-echo "使用lhie1规则创建中..." >$START_LOG
+LOG_OUT "Creating By Using lhie1 Rules..."
 echo "proxy-groups:" >>$SERVER_FILE
 cat >> "$SERVER_FILE" <<-EOF
   - name: Auto - UrlTest
@@ -838,8 +906,8 @@ cat >> "$SERVER_FILE" <<-EOF
   - name: Scholar
     type: select
     proxies:
-      - Proxy
       - DIRECT
+      - Proxy
 EOF
 cat /tmp/Proxy_Server >> $SERVER_FILE 2>/dev/null
 if [ -f "/tmp/Proxy_Provider" ]; then
@@ -1103,7 +1171,7 @@ ${uci_set}Others="Others"
 	${UCI_DEL_LIST}="Speedtest" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Speedtest" >/dev/null 2>&1
 }
 elif [ "$rule_sources" = "ConnersHua_return" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_game_proxy" ]; then
-echo "使用ConnersHua回国规则创建中..." >$START_LOG
+LOG_OUT "Creating By Using ConnersHua Return Rules..."
 echo "proxy-groups:" >>$SERVER_FILE
 cat >> "$SERVER_FILE" <<-EOF
   - name: Auto - UrlTest
@@ -1164,17 +1232,17 @@ fi
 
 if [ "$create_config" != "0" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_game_proxy" ]; then
    echo "rules:" >>$SERVER_FILE
-   echo "配置文件【$CONFIG_NAME】创建完成，正在更新服务器、代理集、策略组信息..." >$START_LOG
+   LOG_OUT "Config File【$CONFIG_NAME】Created Successful, Updating Proxies, Proxy-providers, Groups..."
    cat "$PROXY_PROVIDER_FILE" > "$CONFIG_FILE" 2>/dev/null
    cat "$SERVER_FILE" >> "$CONFIG_FILE" 2>/dev/null
    /usr/share/openclash/yml_groups_get.sh >/dev/null 2>&1
 elif [ -z "$if_game_proxy" ]; then
-   echo "服务器、代理集、策略组信息修改完成，正在更新配置文件【$CONFIG_NAME】..." >$START_LOG
+   LOG_OUT "Proxies, Proxy-providers, Groups Edited Successful, Updating Config File【$CONFIG_NAME】..."
    config_hash=$(ruby -ryaml -E UTF-8 -e "Value = YAML.load_file('$CONFIG_FILE'); puts Value" 2>/dev/null)
    if [ "$config_hash" != "false" ] && [ -n "$config_hash" ]; then
-      ruby_cover "$CONFIG_FILE" "['proxies']" "$SERVER_FILE" "['proxies']"
-      ruby_cover "$CONFIG_FILE" "['proxy-providers']" "$PROXY_PROVIDER_FILE" "['proxy-providers']"
-      ruby_cover "$CONFIG_FILE" "['proxy-groups']" "/tmp/yaml_groups.yaml" "['proxy-groups']"
+      ruby_cover "$CONFIG_FILE" "['proxies']" "$SERVER_FILE" "proxies"
+      ruby_cover "$CONFIG_FILE" "['proxy-providers']" "$PROXY_PROVIDER_FILE" "proxy-providers"
+      ruby_cover "$CONFIG_FILE" "['proxy-groups']" "/tmp/yaml_groups.yaml" "proxy-groups"
    else
       cat "$SERVER_FILE" "$PROXY_PROVIDER_FILE" "/tmp/yaml_groups.yaml" > "$CONFIG_FILE" 2>/dev/null
    fi
@@ -1184,9 +1252,9 @@ if [ -z "$if_game_proxy" ]; then
    rm -rf $SERVER_FILE 2>/dev/null
    rm -rf $PROXY_PROVIDER_FILE 2>/dev/null
    rm -rf /tmp/yaml_groups.yaml 2>/dev/null
-   echo "配置文件【$CONFIG_NAME】写入完成！" >$START_LOG
+   LOG_OUT "Config File【$CONFIG_NAME】Write Successful!"
    sleep 3
-   echo "" >$START_LOG
+   SLOG_CLEAN
 fi
 rm -rf /tmp/Proxy_Server 2>/dev/null
 rm -rf /tmp/Proxy_Provider 2>/dev/null

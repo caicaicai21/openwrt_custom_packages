@@ -1,6 +1,7 @@
 #!/bin/bash
 . /lib/functions.sh
 . /usr/share/openclash/ruby.sh
+. /usr/share/openclash/log.sh
 
 set_lock() {
    exec 875>"/tmp/lock/openclash_proxies_get.lock" 2>/dev/null
@@ -12,12 +13,23 @@ del_lock() {
    rm -rf "/tmp/lock/openclash_proxies_get.lock"
 }
 
-START_LOG="/tmp/openclash_start.log"
+sub_info_get()
+{
+   local section="$1" name
+   config_get "name" "$section" "name" ""
+   
+   if [ -z "$name" ] || [ "$name" != "${CONFIG_NAME%%.*}" ]; then
+      return
+   else
+      sub_cfg=true
+   fi
+}
+
 CONFIG_FILE=$(uci get openclash.config.config_path 2>/dev/null)
 CONFIG_NAME=$(echo "$CONFIG_FILE" |awk -F '/' '{print $5}' 2>/dev/null)
 UPDATE_CONFIG_FILE=$(uci get openclash.config.config_update_path 2>/dev/null)
 UPDATE_CONFIG_NAME=$(echo "$UPDATE_CONFIG_FILE" |awk -F '/' '{print $5}' 2>/dev/null)
-LOGTIME=$(date "+%Y-%m-%d %H:%M:%S")
+LOGTIME=$(echo $(date "+%Y-%m-%d %H:%M:%S"))
 LOG_FILE="/tmp/openclash.log"
 set_lock
 
@@ -45,6 +57,10 @@ elif [ ! -s "$CONFIG_FILE" ] && [ -s "$BACKUP_FILE" ]; then
    mv "$BACKUP_FILE" "$CONFIG_FILE"
 fi
 
+#判断订阅配置
+config_load "openclash"
+config_foreach sub_info_get "config_subscribe"
+
 #提取节点部分
 proxy_hash=$(ruby_read "$CONFIG_FILE" ".select {|x| 'proxies' == x or 'proxy-providers' == x}")
 
@@ -66,8 +82,7 @@ provider_count=0
 group_hash=$(ruby_read "$CONFIG_FILE" ".select {|x| 'proxy-groups' == x}")
 
 if [ -z "$num" ] && [ -z "$provider_num" ]; then
-   echo "配置文件校验失败，请检查配置文件后重试！" >$START_LOG
-   echo "${LOGTIME} Error: Unable To Parse Config File, Please Check And Try Again!" >> $LOG_FILE
+   LOG_OUT "Error: Unable To Parse Config File, Please Check And Try Again!"
    sleep 3
    del_lock
    exit 0
@@ -119,7 +134,7 @@ else
    config_group_exist=0
 fi
 
-echo "开始更新【$CONFIG_NAME】的代理集配置..." >$START_LOG
+LOG_OUT "Start Getting【$CONFIG_NAME】Proxy-providers Setting..."
 
 yml_provider_name_get()
 {
@@ -160,7 +175,7 @@ do
       continue
    fi
    
-   echo "正在读取【$CONFIG_NAME】-【$provider_name】代理集配置..." >$START_LOG
+   LOG_OUT "Start Getting【$CONFIG_NAME - $provider_name】Proxy-provider Setting..."
 
    #代理集存在时获取代理集编号
    provider_nums=$(grep -Fw "$provider_name" "$match_provider" 2>/dev/null|awk -F '.' '{print $1}')
@@ -181,7 +196,7 @@ do
       else
          ${uci_set}enabled="1"
       fi
-      if [ "$servers_if_update" = "1" ]; then
+      if [ "$servers_if_update" = "1" ] || "$sub_cfg"; then
          ${uci_set}manual="0"
       else
          ${uci_set}manual="1"
@@ -252,7 +267,7 @@ do
    }.join;
       
    rescue Exception => e
-   puts '${LOGTIME} Resolve Proxy-provider【${CONFIG_NAME} - ${provider_name}】 Error: ' + e.message
+   puts '${LOGTIME} Error: Resolve Proxy-provider Error,【${CONFIG_NAME} - ${provider_name}: ' + e.message + '】'
    end
    " 2>/dev/null >> $LOG_FILE &
       
@@ -277,7 +292,7 @@ do
             end
             }
          rescue Exception => e
-         puts '${LOGTIME} Resolve Proxy-provider【${CONFIG_NAME} - ${provider_name}】 Error: ' + e.message
+         puts '${LOGTIME} Error: Resolve Proxy-provider Error,【${CONFIG_NAME} - ${provider_name}: ' + e.message + '】'
          end
          }.join;
          " 2>/dev/null >> $LOG_FILE &
@@ -289,7 +304,7 @@ done 2>/dev/null
 
 #删除订阅中已不存在的代理集
 if [ "$servers_if_update" = "1" ]; then
-     echo "删除【$CONFIG_NAME】订阅中已不存在的代理集..." >$START_LOG
+     LOG_OUT "Deleting【$CONFIG_NAME】Proxy-providers That no Longer Exists in Subscription"
      sed -i '/#match#/d' "$match_provider" 2>/dev/null
      cat $match_provider 2>/dev/null|awk -F '.' '{print $1}' |sort -rn |while read line
      do
@@ -313,74 +328,6 @@ yml_servers_name_get()
    server_num=$(( $server_num + 1 ))
 }
 
-server_key_match()
-{
-
-	if [ "$match" = "true" ] || [ ! -z "$(echo "$1" |grep "^ \{0,\}$")" ] || [ ! -z "$(echo "$1" |grep "^\t\{0,\}$")" ]; then
-	   return
-	fi
-	
-	if [ ! -z "$(echo "$1" |grep "&")" ]; then
-	   key_word=$(echo "$1" |sed 's/&/ /g')
-	   match=0
-	   matchs=0
-	   for k in $key_word
-	   do
-	      if [ -z "$k" ]; then
-	         continue
-	      fi
-	      
-	      if [ ! -z "$(echo "$2" |grep -i "$k")" ]; then
-	         match=$(( $match + 1 ))
-	      fi
-	      matchs=$(( $matchs + 1 ))
-	   done
-	   if [ "$match" = "$matchs" ]; then
-	   	  match="true"
-	   else
-	      match="false"
-	   fi
-	else
-	   if [ ! -z "$(echo "$2" |grep -i "$1")" ]; then
-	      match="true"
-	   fi
-	fi
-}
-
-server_key_exmatch()
-{
-
-	if [ "$match" = "false" ] || [ ! -z "$(echo "$1" |grep "^ \{0,\}$")" ] || [ ! -z "$(echo "$1" |grep "^\t\{0,\}$")" ]; then
-	   return
-	fi
-	
-	if [ ! -z "$(echo "$1" |grep "&")" ]; then
-	   key_word=$(echo "$1" |sed 's/&/ /g')
-	   match=0
-	   matchs=0
-	   for k in $key_word
-	   do
-	      if [ -z "$k" ]; then
-	         continue
-	      fi
-	      
-	      if [ ! -z "$(echo "$2" |grep -i "$k")" ]; then
-	         match=$(( $match + 1 ))
-	      fi
-	      matchs=$(( $matchs + 1 ))
-	   done
-	   if [ "$match" = "$matchs" ]; then
-	   	  match="false"
-	   else
-	      match="true"
-	   fi
-	else
-	   if [ ! -z "$(echo "$2" |grep -i "$1")" ]; then
-	      match="false"
-	   fi
-	fi
-}
-
 cfg_new_servers_groups_get()
 {
 	 if [ -z "$1" ]; then
@@ -390,7 +337,7 @@ cfg_new_servers_groups_get()
    ${uci_add}groups="${1}"
 }
 	   
-echo "开始更新【$CONFIG_NAME】的服务器节点配置..." >$START_LOG
+LOG_OUT "Start Getting【$CONFIG_NAME】Proxies Setting..."
 
 [ "$servers_update" -eq 1 ] && {
 echo "" >"$match_servers"
@@ -418,7 +365,7 @@ do
    #type
    server_type=$(ruby_read_hash "$proxy_hash" "['proxies'][$count]['type']")
 
-   echo "正在读取【$CONFIG_NAME】-【$server_type】-【$server_name】服务器节点配置..." > "$START_LOG"
+   LOG_OUT "Start Getting【$CONFIG_NAME - $server_type - $server_name】Proxy Setting..."
 
    if [ "$servers_update" -eq 1 ] && [ ! -z "$server_num" ]; then
 #更新已有节点
@@ -442,7 +389,7 @@ do
       else
          ${uci_set}enabled="1"
       fi
-      if [ "$servers_if_update" = "1" ]; then
+      if [ "$servers_if_update" = "1" ] || "$sub_cfg"; then
          ${uci_set}manual="0"
       else
          ${uci_set}manual="1"
@@ -643,6 +590,32 @@ do
                   system(custom)
                end
             end
+            #ws-opts-path:
+            if Value['proxies'][$count].key?('ws-opts') then
+               if Value['proxies'][$count]['ws-opts'].key?('path') then
+                  ws_opts_path = '${uci_set}ws_opts_path=\"' + Value['proxies'][$count]['ws-opts']['path'].to_s + '\"'
+                  system(ws_opts_path)
+               end
+               #ws-opts-headers:
+               if Value['proxies'][$count]['ws-opts'].key?('headers') then
+                  system '${uci_del}ws_opts_headers >/dev/null 2>&1'
+                  Value['proxies'][$count]['ws-opts']['headers'].keys.each{
+                  |v|
+                     ws_opts_headers = '${uci_add}ws_opts_headers=\"' + v.to_s + ': '+ Value['proxies'][$count]['ws-opts']['headers'][v].to_s + '\"'
+                     system(ws_opts_headers)
+                  }
+               end
+               #max-early-data:
+               if Value['proxies'][$count]['ws-opts'].key?('max-early-data') then
+                  max_early_data = '${uci_set}max_early_data=\"' + Value['proxies'][$count]['ws-opts']['max-early-data'].to_s + '\"'
+                  system(max_early_data)
+               end
+               #early-data-header-name:
+               if Value['proxies'][$count]['ws-opts'].key?('early-data-header-name') then
+                  early_data_header_name = '${uci_set}early_data_header_name=\"' + Value['proxies'][$count]['ws-opts']['early-data-header-name'].to_s + '\"'
+                  system(early_data_header_name)
+               end
+            end
          elsif Value['proxies'][$count]['network'].to_s == 'http'
             system '${uci_set}obfs_vmess=http'
             if Value['proxies'][$count].key?('http-opts') then
@@ -677,7 +650,7 @@ do
                   }
                end
                if Value['proxies'][$count]['h2-opts'].key?('path') then
-                  h2_path = '${uci_set}h2_path=\"' + Value['proxies'][$count]['h2-opts']['host'].to_s + '\"'
+                  h2_path = '${uci_set}h2_path=\"' + Value['proxies'][$count]['h2-opts']['path'].to_s + '\"'
                   system(h2_path)
                end
             end
@@ -781,9 +754,30 @@ do
       Thread.new{
       #grpc-service-name
       if Value['proxies'][$count].key?('grpc-opts') then
+         system '${uci_set}obfs_trojan=grpc'
          if Value['proxies'][$count]['grpc-opts'].key?('grpc-service-name') then
             grpc_service_name = '${uci_set}grpc_service_name=\"' + Value['proxies'][$count]['grpc-opts']['grpc-service-name'].to_s + '\"'
             system(grpc_service_name)
+         end
+      end
+      }.join
+      
+      Thread.new{
+      if Value['proxies'][$count].key?('ws-opts') then
+      system '${uci_set}obfs_trojan=ws'
+      #trojan_ws_path
+         if Value['proxies'][$count]['ws-opts'].key?('path') then
+            trojan_ws_path = '${uci_set}trojan_ws_path=\"' + Value['proxies'][$count]['ws-opts']['path'].to_s + '\"'
+            system(trojan_ws_path)
+         end
+      #trojan_ws_headers
+         if Value['proxies'][$count]['ws-opts'].key?('headers') then
+            system '${uci_del}trojan_ws_headers >/dev/null 2>&1'
+            Value['proxies'][$count]['ws-opts']['headers'].keys.each{
+            |v|
+               trojan_ws_headers = '${uci_add}trojan_ws_headers=\"' + v.to_s + ': '+ Value['proxies'][$count]['ws-opts']['headers'][v].to_s + '\"'
+               system(trojan_ws_headers)
+            }
          end
       end
       }.join
@@ -798,7 +792,7 @@ do
    end;
    
    rescue Exception => e
-   puts '${LOGTIME} Resolve Proxy【${CONFIG_NAME} - ${server_type} - ${server_name}】 Error: ' + e.message
+   puts '${LOGTIME} Error: Resolve Proxy Error,【${CONFIG_NAME} - ${server_type} - ${server_name}: ' + e.message + '】'
    end
    " 2>/dev/null >> $LOG_FILE &
    
@@ -834,7 +828,7 @@ do
             end
             }
          rescue Exception => e
-         puts '${LOGTIME} Resolve Proxy【${CONFIG_NAME} - ${server_type} - ${server_name}】 Error: ' + e.message
+         puts '${LOGTIME} Error: Resolve Proxy Error,【${CONFIG_NAME} - ${server_type} - ${server_name}: ' + e.message + '】'
          end
          }.join;
          " 2>/dev/null >> $LOG_FILE &
@@ -845,7 +839,7 @@ done 2>/dev/null
 
 #删除订阅中已不存在的节点
 if [ "$servers_if_update" = "1" ]; then
-     echo "删除【$CONFIG_NAME】订阅中已不存在的节点..." >$START_LOG
+     LOG_OUT "Deleting【$CONFIG_NAME】Proxies That no Longer Exists in Subscription"
      sed -i '/#match#/d' "$match_servers" 2>/dev/null
      cat $match_servers |awk -F '.' '{print $1}' |sort -rn |while read -r line
      do
@@ -862,9 +856,9 @@ uci set openclash.config.servers_if_update=0
 wait
 uci commit openclash
 /usr/share/openclash/cfg_servers_address_fake_filter.sh
-echo "配置文件【$CONFIG_NAME】读取完成！" >$START_LOG
+LOG_OUT "Config File【$CONFIG_NAME】Read Successful!"
 sleep 3
-echo "" >$START_LOG
+SLOG_CLEAN
 rm -rf /tmp/match_servers.list 2>/dev/null
 rm -rf /tmp/match_provider.list 2>/dev/null
 rm -rf /tmp/yaml_other_group.yaml 2>/dev/null

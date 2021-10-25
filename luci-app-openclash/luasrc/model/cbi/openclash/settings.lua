@@ -6,6 +6,7 @@ local DISP = require "luci.dispatcher"
 local UTIL = require "luci.util"
 local fs = require "luci.openclash"
 local uci = require "luci.model.uci".cursor()
+local json = require "luci.jsonc"
 
 font_green = [[<font color="green">]]
 font_red = [[<font color="red">]]
@@ -15,9 +16,12 @@ bold_off = [[</strong>]]
 
 local op_mode = string.sub(luci.sys.exec('uci get openclash.config.operation_mode 2>/dev/null'),0,-2)
 if not op_mode then op_mode = "redir-host" end
+local lan_ip=SYS.exec("uci -q get network.lan.ipaddr |awk -F '/' '{print $1}' 2>/dev/null |tr -d '\n' || ip addr show 2>/dev/null | grep -w 'inet' | grep 'global' | grep 'brd' | grep -Eo 'inet [0-9\.]+' | awk '{print $2}' | head -n 1 | tr -d '\n'")
 
 m = Map("openclash", translate("Global Settings(Will Modify The Config File Or Subscribe According To The Settings On This Page)"))
 m.pageaction = false
+m.description=translate("To restore the default configuration, try accessing:").." <a href='javascript:void(0)' onclick='javascript:restore_config(this)'>http://"..lan_ip.."/cgi-bin/luci/admin/services/openclash/restore</a>"
+
 s = m:section(TypedSection, "openclash")
 s.anonymous = true
 
@@ -37,6 +41,7 @@ s:tab("chnr_update", translate("Chnroute Update"))
 s:tab("auto_restart", translate("Auto Restart"))
 s:tab("version_update", translate("Version Update"))
 s:tab("debug", translate("Debug Logs"))
+s:tab("dlercloud", translate("Dler Cloud"))
 
 o = s:taboption("op_mode", ListValue, "en_mode", font_red..bold_on..translate("Select Mode")..bold_off..font_off)
 o.description = translate("Select Mode For OpenClash Work, Try Flush DNS Cache If Network Error")
@@ -78,6 +83,15 @@ o:value("direct", translate("Direct Proxy Mode"))
 o:value("script", translate("Script Proxy Mode (Tun Core Only)"))
 o.default = "rule"
 
+o = s:taboption("op_mode", Flag, "ipv6_enable", font_red..bold_on..translate("Proxy IPv6 Traffic")..bold_off..font_off)
+o.description = font_red..bold_on..translate("Disable IPv6 DHCP To Avoid Abnormal Connection If You Do Not Use")..bold_off..font_off
+o.default=0
+
+o = s:taboption("op_mode", Flag, "china_ip6_route", translate("China IPv6 Route"))
+o.description = translate("Bypass The China Network Flows, Improve Performance")
+o.default=0
+o:depends("ipv6_enable", 1)
+
 o = s:taboption("op_mode", Flag, "disable_udp_quic", font_red..bold_on..translate("Disable QUIC")..bold_off..font_off)
 o.description = translate("Prevent YouTube and Others To Use QUIC Transmission")..", "..font_red..bold_on..translate("REJECT UDP Traffic On Port 443")..bold_off..font_off
 o.default=1
@@ -102,6 +116,20 @@ o:depends("en_mode", "redir-host-tun")
 o:depends("en_mode", "redir-host-vpn")
 o:depends("en_mode", "redir-host-mix")
 
+o = s:taboption("op_mode", Flag, "netflix_domains_prefetch", font_red..bold_on..translate("Prefetch Netflix Domains")..bold_off..font_off)
+o.description = translate("Prevent Some Devices From Directly Using IP Access To Cause Unlocking Failure")
+o.default=0
+
+o = s:taboption("op_mode", Value, "netflix_domains_prefetch_interval", translate("Netflix Domains Prefetch Interval(min)"))
+o.default=1440
+o.datatype = "uinteger"
+o.description = translate("Will Run Once Immediately After Started, The Interval Does Not Need To Be Too Short (Take Effect Immediately After Commit)")
+o:depends("netflix_domains_prefetch", "1")
+
+o = s:taboption("op_mode", DummyValue, "netflix_domains_update", translate("Update Netflix Domains List"))
+o:depends("netflix_domains_prefetch", "1")
+o.template = "openclash/download_netflix_domains"
+
 o = s:taboption("op_mode", Flag, "small_flash_memory", translate("Small Flash Memory"))
 o.description = translate("Move Core And GEOIP Data File To /tmp/etc/openclash For Small Flash Memory Device")
 o.default=0
@@ -111,26 +139,8 @@ switch_mode = s:taboption("op_mode", DummyValue, "", nil)
 switch_mode.template = "openclash/switch_mode"
 
 ---- General Settings
-local cpu_model=SYS.exec("opkg status libc 2>/dev/null |grep 'Architecture' |awk -F ': ' '{print $2}' 2>/dev/null")
-o = s:taboption("settings", ListValue, "core_version", font_red..bold_on..translate("Chose to Download")..bold_off..font_off)
-o.description = translate("CPU Model")..': '..font_green..bold_on..cpu_model..bold_off..font_off..', '..translate("Select Based On Your CPU Model For Core Update, Wrong Version Will Not Work")
-o:value("linux-386")
-o:value("linux-amd64", translate("linux-amd64(x86-64)"))
-o:value("linux-armv5")
-o:value("linux-armv6")
-o:value("linux-armv7")
-o:value("linux-armv8")
-o:value("linux-mips-hardfloat")
-o:value("linux-mips-softfloat")
-o:value("linux-mips64")
-o:value("linux-mips64le")
-o:value("linux-mipsle-softfloat")
-o:value("linux-mipsle-hardfloat")
-o:value("0", translate("Not Set"))
-o.default=0
-
 o = s:taboption("settings", ListValue, "interface_name", font_red..bold_on..translate("Bind Network Interface")..bold_off..font_off)
-local de_int = SYS.exec("ip route |grep 'default' |awk '{print $5}' 2>/dev/null")
+local de_int = SYS.exec("ip route |grep 'default' |awk '{print $5}' 2>/dev/null") or SYS.exec("/usr/share/openclash/openclash_get_network.lua 'dhcp'")
 o.description = translate("Default Interface Name:").." "..font_green..bold_on..de_int..bold_off..font_off..translate(",Try Enable If Network Loopback")
 local interfaces = SYS.exec("ls -l /sys/class/net/ 2>/dev/null |awk '{print $9}' 2>/dev/null")
 for interface in string.gmatch(interfaces, "%S+") do
@@ -138,6 +148,14 @@ for interface in string.gmatch(interfaces, "%S+") do
 end
 o:value("0", translate("Disable"))
 o.default=0
+
+o = s:taboption("settings", Value, "tolerance", font_red..bold_on..translate("Url-Test Group Tolerance (ms)")..bold_off..font_off)
+o.description = translate("Switch To The New Proxy When The Delay Difference Between Old and The Fastest Currently is Greater Than This Value")
+o:value("0", translate("Disable"))
+o:value("100")
+o:value("150")
+o.datatype = "uinteger"
+o.default = "0"
 
 o = s:taboption("settings", ListValue, "log_level", translate("Log Level"))
 o.description = translate("Select Core's Log Level")
@@ -153,7 +171,7 @@ o.description = translate("Set Log File Size (KB)")
 o.default=1024
 
 o = s:taboption("settings", Flag, "intranet_allowed", translate("Only intranet allowed"))
-o.description = translate("When Enabled, The Control Panel And The Connection Broker Port Will Not Be Accessible From The Public Network")
+o.description = translate("When Enabled, The Control Panel And The Connection Broker Port Will Not Be Accessible From The Public Network, Not Support IPv6 Yet")
 o.default=0
 
 o = s:taboption("settings", Value, "dns_port")
@@ -166,6 +184,13 @@ o.description = translate("Please Make Sure Ports Available")
 o = s:taboption("settings", Value, "proxy_port")
 o.title = translate("Redir Port")
 o.default = 7892
+o.datatype = "port"
+o.rmempty = false
+o.description = translate("Please Make Sure Ports Available")
+
+o = s:taboption("settings", Value, "tproxy_port")
+o.title = translate("TProxy Port")
+o.default = 7895
 o.datatype = "port"
 o.rmempty = false
 o.description = translate("Please Make Sure Ports Available")
@@ -200,13 +225,46 @@ o = s:taboption("dns", Flag, "enable_custom_dns", font_red..bold_on..translate("
 o.description = font_red..bold_on..translate("Set OpenClash Upstream DNS Resolve Server")..bold_off..font_off
 o.default=0
 
-o = s:taboption("dns", Flag, "ipv6_enable", translate("Enable ipv6 Resolve"))
-o.description = font_red..bold_on..translate("Enable Clash to Resolve ipv6 DNS Requests")..bold_off..font_off
+o = s:taboption("dns", Flag, "append_wan_dns", font_red..bold_on..translate("Append Upstream DNS")..bold_off..font_off)
+o.description = font_red..bold_on..translate("Append The Upstream Assigned DNS And Gateway IP To The Nameserver")..bold_off..font_off
+o.default=1
+
+if op_mode == "fake-ip" then
+o = s:taboption("dns", Flag, "store_fakeip", font_red..bold_on..translate("Persistence Fake-IP")..bold_off..font_off)
+o.description = font_red..bold_on..translate("Cache Fake-IP DNS Resolution Records To File, Improve The Response Speed After Startup")..bold_off..font_off
+o.default=1
+end
+
+o = s:taboption("dns", Flag, "ipv6_dns", translate("IPv6 DNS Resolve"))
+o.description = font_red..bold_on..translate("Enable Clash to Resolve IPv6 DNS Requests")..bold_off..font_off
 o.default=0
 
 o = s:taboption("dns", Flag, "disable_masq_cache", translate("Disable Dnsmasq's DNS Cache"))
 o.description = translate("Recommended Enabled For Avoiding Some Connection Errors")..font_red..bold_on..translate("(Maybe Incompatible For Your Firmware)")..bold_off..font_off
 o.default=0
+
+o = s:taboption("dns", Flag, "custom_fallback_filter", translate("Custom Fallback-Filter"))
+o.description = translate("Take Effect If Fallback DNS Setted, Prevent DNS Pollution")
+o.default=0
+
+custom_fallback_filter = s:taboption("dns", Value, "custom_fallback_fil")
+custom_fallback_filter.template = "cbi/tvalue"
+custom_fallback_filter.rows = 20
+custom_fallback_filter.wrap = "off"
+custom_fallback_filter:depends("custom_fallback_filter", "1")
+
+function custom_fallback_filter.cfgvalue(self, section)
+	return NXFS.readfile("/etc/openclash/custom/openclash_custom_fallback_filter.yaml") or ""
+end
+function custom_fallback_filter.write(self, section, value)
+	if value then
+		value = value:gsub("\r\n?", "\n")
+		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_fallback_filter.yaml")
+	  if value ~= old_value then
+			NXFS.writefile("/etc/openclash/custom/openclash_custom_fallback_filter.yaml", value)
+		end
+	end
+end
 
 o = s:taboption("dns", Flag, "dns_advanced_setting", translate("Advanced Setting"))
 o.description = translate("DNS Advanced Settings")..font_red..bold_on..translate("(Please Don't Modify it at Will)")..bold_off..font_off
@@ -325,6 +383,17 @@ luci.ip.neighbors({ family = 4 }, function(n)
 		mac_w:value(n.mac, "%s (%s)" %{ n.mac, n.dest:string() })
 	end
 end)
+
+if string.len(SYS.exec("/usr/share/openclash/openclash_get_network.lua 'gateway6'")) ~= 0 then
+luci.ip.neighbors({ family = 6 }, function(n)
+	if n.mac and n.dest then
+		ip_b:value(n.dest:string())
+		ip_w:value(n.dest:string())
+		mac_b:value(n.mac, "%s (%s)" %{ n.mac, n.dest:string() })
+		mac_w:value(n.mac, "%s (%s)" %{ n.mac, n.dest:string() })
+	end
+end)
+end
 end
 
 o = s:taboption("lan_ac", DynamicList, "wan_ac_black_ips", translate("WAN Bypassed Host List"))
@@ -347,7 +416,7 @@ o.default=0
 custom_rules = s:taboption("rules", Value, "custom_rules")
 custom_rules:depends("enable_custom_clash_rules", 1)
 custom_rules.template = "cbi/tvalue"
-custom_rules.description = translate("Custom Rules Here, For More Go Github:https://github.com/Dreamacro/clash/blob/master/README.md, IP To CIDR: http://ip2cidr.com")
+custom_rules.description = translate("Custom Priority Rules Here, For More Go:").." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://lancellc.gitbook.io/clash/clash-config-file/rules\")'>https://lancellc.gitbook.io/clash/clash-config-file/rules</a>".." ,"..translate("IP To CIDR:").." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"http://ip2cidr.com\")'>http://ip2cidr.com</a>"
 custom_rules.rows = 20
 custom_rules.wrap = "off"
 
@@ -367,7 +436,7 @@ end
 custom_rules_2 = s:taboption("rules", Value, "custom_rules_2")
 custom_rules_2:depends("enable_custom_clash_rules", 1)
 custom_rules_2.template = "cbi/tvalue"
-custom_rules_2.description = translate("Custom Rules 2 Here, For More Go Github:https://github.com/Dreamacro/clash/blob/master/README.md, IP To CIDR: http://ip2cidr.com")
+custom_rules_2.description = translate("Custom Extended Rules Here, For More Go:").." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://lancellc.gitbook.io/clash/clash-config-file/rules\")'>https://lancellc.gitbook.io/clash/clash-config-file/rules</a>".." ,"..translate("IP To CIDR:").." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"http://ip2cidr.com\")'>http://ip2cidr.com</a>"
 custom_rules_2.rows = 20
 custom_rules_2.wrap = "off"
 
@@ -443,9 +512,9 @@ o = s:taboption("geo_update", Value, "geo_custom_url")
 o.title = translate("Custom GEOIP URL")
 o.rmempty = false
 o.description = translate("Custom GEOIP Data URL, Click Button Below To Refresh After Edit")
-o:value("http://www.ideame.top/mmdb/Country.mmdb", translate("Alecthw-Version")..translate("(Default)"))
+o:value("https://cdn.jsdelivr.net/gh/alecthw/mmdb_china_ip_list@release/lite/Country.mmdb", translate("Alecthw-lite-Version")..translate("(Default mmdb)"))
+o:value("https://cdn.jsdelivr.net/gh/alecthw/mmdb_china_ip_list@release/Country.mmdb", translate("Alecthw-Version")..translate("(All Info mmdb)"))
 o:value("https://cdn.jsdelivr.net/gh/Hackl0us/GeoIP2-CN@release/Country.mmdb", translate("Hackl0us-Version")..translate("(Only CN)"))
-o:value("https://static.clash.to/GeoIP2/GeoIP2-Country.mmdb", translate("Static.clash.to"))
 o:value("https://geolite.clash.dev/Country.mmdb", translate("Geolite.clash.dev"))
 o.default = "http://www.ideame.top/mmdb/Country.mmdb"
 
@@ -460,7 +529,6 @@ o.write = function()
   HTTP.redirect(DISP.build_url("admin", "services", "openclash"))
 end
 
-if op_mode == "redir-host" then
 o = s:taboption("chnr_update", Flag, "chnr_auto_update", translate("Auto Update"))
 o.description = translate("Auto Update Chnroute Lists")
 o.default=0
@@ -491,6 +559,13 @@ o:value("https://ispip.clang.cn/all_cn_cidr.txt", translate("Clang-CN-CIDR"))
 o:value("https://cdn.jsdelivr.net/gh/Hackl0us/GeoIP2-CN@release/CN-ip-cidr.txt", translate("Hackl0us-CN-CIDR")..translate("(Large Size)"))
 o.default = "https://ispip.clang.cn/all_cn.txt"
 
+o = s:taboption("chnr_update", Value, "chnr6_custom_url")
+o.title = translate("Custom Chnroute6 Lists URL")
+o.rmempty = false
+o.description = translate("Custom Chnroute6 Lists URL, Click Button Below To Refresh After Edit")
+o:value("https://ispip.clang.cn/all_cn_ipv6.txt", translate("Clang-CN-IPV6")..translate("(Default)"))
+o.default = "https://ispip.clang.cn/all_cn_ipv6.txt"
+
 o = s:taboption("chnr_update", Button, translate("Chnroute Lists Update")) 
 o.title = translate("Update Chnroute Lists")
 o.inputtitle = translate("Check And Update")
@@ -500,7 +575,6 @@ o.write = function()
   m.uci:commit("openclash")
   SYS.call("/usr/share/openclash/openclash_chnroute.sh >/dev/null 2>&1 &")
   HTTP.redirect(DISP.build_url("admin", "services", "openclash"))
-end
 end
 
 o = s:taboption("auto_restart", Flag, "auto_restart", translate("Auto Restart"))
@@ -525,7 +599,6 @@ end
 o.default=0
 
 ---- Dashboard Settings
-local lan_ip=SYS.exec("uci get network.lan.ipaddr 2>/dev/null |awk -F '/' '{print $1}' 2>/dev/null |tr -d '\n'")
 local cn_port=SYS.exec("uci get openclash.config.cn_port 2>/dev/null |tr -d '\n'")
 o = s:taboption("dashboard", Value, "cn_port")
 o.title = translate("Dashboard Port")
@@ -539,26 +612,73 @@ o.title = translate("Dashboard Secret")
 o.rmempty = true
 o.description = translate("Set Dashboard Secret")
 
+o = s:taboption("dashboard", Value, "dashboard_forward_domain")
+o.title = translate("Public Dashboard Address")
+o.datatype = "or(host, string)"
+o.placeholder = "example.com"
+o.rmempty = true
+o.description = translate("Domain Name For Dashboard Login From Public Network")
+
+o = s:taboption("dashboard", Value, "dashboard_forward_port")
+o.title = translate("Public Dashboard Port")
+o.datatype = "port"
+o.rmempty = true
+o.description = translate("Port For Dashboard Login From Public Network")
+
 ---- version update
 core_update = s:taboption("version_update", DummyValue, "", nil)
 core_update.template = "openclash/update"
 
 ---- debug
-debug_log = s:taboption("debug", Value, "debug_log")
-debug_log.template = "cbi/tvalue"
-debug_log.readonly=true
-debug_log.rows = 30
-debug_log.wrap = "off"
-function debug_log.cfgvalue(self, section)
-  return NXFS.readfile("/tmp/openclash_debug.log") or ""
+o = s:taboption("debug", DummyValue, "", nil)
+o.template = "openclash/debug"
+
+---- dlercloud
+o = s:taboption("dlercloud", Value, "dler_email")
+o.title = translate("Account Email Address")
+o.rmempty = true
+
+o = s:taboption("dlercloud", Value, "dler_passwd")
+o.title = translate("Account Password")
+o.password = true
+o.rmempty = true
+
+if m.uci:get("openclash", "config", "dler_token") then
+	o = s:taboption("dlercloud", Flag, "dler_checkin")
+	o.title = translate("Checkin")
+	o.default=0
+	o.rmempty = true
 end
-  
-o = s:taboption("debug", Button, translate("Generate Logs")) 
-o.title = translate("Generate Logs")
-o.inputtitle = translate("Click to Generate")
-o.inputstyle = "reload"
-o.write = function()
-  SYS.call("/usr/share/openclash/openclash_debug.sh")
+
+o = s:taboption("dlercloud", Value, "dler_checkin_interval")
+o.title = translate("Checkin Interval (hour)")
+o:depends("dler_checkin", "1")
+o.default=1
+o.rmempty = true
+
+o = s:taboption("dlercloud", Value, "dler_checkin_multiple")
+o.title = translate("Checkin Multiple")
+o.datatype = "uinteger"
+o.default=1
+o:depends("dler_checkin", "1")
+o.rmempty = true
+o.description = font_green..bold_on..translate("Multiple Must Be a Positive Integer and No More Than 50")..bold_off..font_off
+function o.validate(self, value)
+	if tonumber(value) < 1 then
+		return "1"
+	end
+	if tonumber(value) > 50 then
+		return "50"
+	end
+	return value
+end
+
+o = s:taboption("dlercloud", DummyValue, "dler_login", translate("Account Login"))
+o.template = "openclash/dler_login"
+if m.uci:get("openclash", "config", "dler_token") then
+	o.value = font_green..bold_on..translate("Account logged in")..bold_off..font_off
+else
+	o.value = font_red..bold_on..translate("Account not logged in")..bold_off..font_off
 end
 
 -- [[ Edit Server ]] --
@@ -680,12 +800,12 @@ o.placeholder = translate("Not Null")
 o.rmempty = true
 
 if op_mode == "redir-host" then
-s = m:section(TypedSection, "openclash", translate("Set Custom Hosts, Only Work with Redir-Host Mode"))
+s = m:section(NamedSection, "config", translate("Set Custom Hosts, Only Work with Redir-Host Mode"))
 s.anonymous = true
 
 custom_hosts = s:option(Value, "custom_hosts")
 custom_hosts.template = "cbi/tvalue"
-custom_hosts.description = translate("Custom Hosts Here, For More Go Github:https://github.com/Dreamacro/clash/blob/master/README.md")
+custom_hosts.description = translate("Custom Hosts Here, For More Go:").." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://lancellc.gitbook.io/clash/clash-config-file/dns/host\")'>https://lancellc.gitbook.io/clash/clash-config-file/dns/host</a>"
 custom_hosts.rows = 20
 custom_hosts.wrap = "off"
 
@@ -710,14 +830,14 @@ local t = {
 a = m:section(Table, t)
 
 o = a:option(Button, "Commit", " ")
-o.inputtitle = translate("Commit Configurations")
+o.inputtitle = translate("Commit Settings")
 o.inputstyle = "apply"
 o.write = function()
   m.uci:commit("openclash")
 end
 
 o = a:option(Button, "Apply", " ")
-o.inputtitle = translate("Apply Configurations")
+o.inputtitle = translate("Apply Settings")
 o.inputstyle = "apply"
 o.write = function()
   m.uci:set("openclash", "config", "enable", 1)
@@ -725,6 +845,10 @@ o.write = function()
   SYS.call("/etc/init.d/openclash restart >/dev/null 2>&1 &")
   HTTP.redirect(DISP.build_url("admin", "services", "openclash"))
 end
+
+m:append(Template("openclash/config_editor"))
+m:append(Template("openclash/toolbar_show"))
+
 return m
 
 

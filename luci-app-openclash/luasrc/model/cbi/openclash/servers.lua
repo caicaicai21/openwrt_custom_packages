@@ -16,7 +16,7 @@ s = m:section(TypedSection, "openclash")
 s.anonymous = true
 
 o = s:option(Flag, "create_config", translate("Create Config"))
-o.description = font_red .. bold_on .. translate("Create Config By One-Click Only Need Proxys") .. bold_off .. font_off
+o.description = font_red .. bold_on .. translate("Create Config By One-Click Only Need Proxies") .. bold_off .. font_off
 o.default=0
 
 o = s:option(ListValue, "rule_sources", translate("Choose Template For Create Config"))
@@ -112,7 +112,7 @@ function o.cfgvalue(...)
 end
 
 -- [[ Servers Manage ]]--
-s = m:section(TypedSection, "servers", translate("Proxys"))
+s = m:section(TypedSection, "servers", translate("Proxies"))
 s.anonymous = true
 s.addremove = true
 s.sortable = true
@@ -201,7 +201,7 @@ o.write = function()
 end
 
 o = b:option(Button,"Delete_Proxy_Provider", " ")
-o.inputtitle = translate("Delete Proxy Provider")
+o.inputtitle = translate("Delete Proxy Providers")
 o.inputstyle = "reset"
 o.write = function()
   m.uci:set("openclash", "config", "enable", 0)
@@ -227,7 +227,7 @@ local t = {
 a = m:section(Table, t)
 
 o = a:option(Button,"Load_Config", " ")
-o.inputtitle = translate("Load Config")
+o.inputtitle = translate("Read Config")
 o.inputstyle = "apply"
 o.write = function()
   m.uci:set("openclash", "config", "enable", 0)
@@ -237,7 +237,7 @@ o.write = function()
 end
 
 o = a:option(Button, "Commit", " ") 
-o.inputtitle = translate("Commit Configurations")
+o.inputtitle = translate("Commit Settings")
 o.inputstyle = "apply"
 o.write = function()
 	fs.unlink("/tmp/Proxy_Group")
@@ -246,7 +246,7 @@ o.write = function()
 end
 
 o = a:option(Button, "Apply", " ")
-o.inputtitle = translate("Apply Configurations")
+o.inputtitle = translate("Apply Settings")
 o.inputstyle = "apply"
 o.write = function()
 	fs.unlink("/tmp/Proxy_Group")
@@ -257,4 +257,6 @@ o.write = function()
 end
 
 m:append(Template("openclash/server_list"))
+m:append(Template("openclash/toolbar_show"))
+
 return m
