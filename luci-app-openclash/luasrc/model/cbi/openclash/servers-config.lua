@@ -7,8 +7,8 @@ local sys = require "luci.sys"
 local sid = arg[1]
 local uuid = luci.sys.exec("cat /proc/sys/kernel/random/uuid")
 
-font_red = [[<font color="red">]]
-font_off = [[</font>]]
+font_red = [[<b style=color:red>]]
+font_off = [[</b>]]
 bold_on  = [[<strong>]]
 bold_off = [[</strong>]]
 
@@ -287,10 +287,12 @@ o:depends("obfs_vmess", "websocket")
 
 o = s:option(Value, "max_early_data", translate("max-early-data"))
 o.rmempty = true
+o.placeholder = translate("2048")
 o:depends("obfs_vmess", "websocket")
 
 o = s:option(Value, "early_data_header_name", translate("early-data-header-name"))
 o.rmempty = true
+o.placeholder = translate("Sec-WebSocket-Protocol")
 o:depends("obfs_vmess", "websocket")
 
 -- [[ skip-cert-verify ]]--
@@ -314,11 +316,7 @@ o.default = "false"
 o:value("true")
 o:value("false")
 o:depends("obfs", "websocket")
-o:depends("obfs_vmess", "none")
-o:depends("obfs_vmess", "websocket")
-o:depends("obfs_vmess", "http")
-o:depends("obfs_vmess", "grpc")
-o:depends("obfs_vmess", "h2")
+o:depends("type", "vmess")
 o:depends("type", "socks5")
 o:depends("type", "http")
 
@@ -326,8 +324,9 @@ o = s:option(Value, "servername", translate("servername"))
 o.rmempty = true
 o.datatype = "host"
 o.placeholder = translate("example.com")
-o:depends("obfs_vmess", "websocket")
-o:depends("obfs_vmess", "grpc")
+o:depends({obfs_vmess = "websocket", tls = "true"})
+o:depends({obfs_vmess = "grpc", tls = "true"})
+o:depends({obfs_vmess = "none", tls = "true"})
 
 o = s:option(Value, "keep_alive", translate("keep-alive"))
 o.rmempty = true
@@ -390,6 +389,16 @@ o = s:option(DynamicList, "trojan_ws_headers", translate("Headers"))
 o.rmempty = true
 o.placeholder = translate("Host: v2ray.com")
 o:depends("obfs_trojan", "ws")
+
+-- [[ interface-name ]]--
+o = s:option(Value, "interface_name", translate("interface-name"))
+o.rmempty = true
+o.placeholder = translate("eth0")
+
+-- [[ interface-name ]]--
+o = s:option(Value, "routing_mark", translate("routing-mark"))
+o.rmempty = true
+o.placeholder = translate("2333")
 
 o = s:option(DynamicList, "groups", translate("Proxy Group"))
 o.description = font_red..bold_on..translate("No Need Set when Config Create, The added Proxy Groups Must Exist")..bold_off..font_off

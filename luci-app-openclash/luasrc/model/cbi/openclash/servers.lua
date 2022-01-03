@@ -4,8 +4,8 @@ local openclash = "openclash"
 local uci = luci.model.uci.cursor()
 local fs = require "luci.openclash"
 
-font_red = [[<font color="red">]]
-font_off = [[</font>]]
+font_red = [[<b style=color:red>]]
+font_off = [[</b>]]
 bold_on  = [[<strong>]]
 bold_off = [[</strong>]]
 
@@ -162,9 +162,9 @@ end
 o = s:option(DummyValue, "udp", translate("UDP Support"))
 function o.cfgvalue(...)
 	if Value.cfgvalue(...) == "true" then
-		return translate("支持")
+		return translate("Enable")
 	elseif Value.cfgvalue(...) == "false" then
-		return translate("不支持")
+		return translate("Disable")
 	else
 		return translate("None")
 	end
