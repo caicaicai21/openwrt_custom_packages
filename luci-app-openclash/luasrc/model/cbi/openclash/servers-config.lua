@@ -126,6 +126,9 @@ o.description = translate("Using incorrect encryption mothod may causes service 
 o = s:option(Value, "name", translate("Server Alias"))
 o.rmempty = false
 o.default = "Server - "..sid
+if not m.uci:get("openclash", sid, "name") then
+	m.uci:set("openclash", sid, "manual", 1)
+end
 
 o = s:option(Value, "server", translate("Server Address"))
 o.datatype = "host"
@@ -134,7 +137,7 @@ o.rmempty = true
 o = s:option(Value, "port", translate("Server Port"))
 o.datatype = "port"
 o.rmempty = false
-o.default = 443
+o.default = "443"
 
 o = s:option(Value, "password", translate("Password"))
 o.password = true
@@ -145,6 +148,11 @@ o:depends("type", "trojan")
 
 o = s:option(Value, "psk", translate("Psk"))
 o.rmempty = false
+o:depends("type", "snell")
+
+o = s:option(ListValue, "snell_version", translate("Version"))
+o:value("2")
+o:value("3")
 o:depends("type", "snell")
 
 o = s:option(ListValue, "cipher", translate("Encrypt Method"))
@@ -181,7 +189,7 @@ o:depends("type", "ssr")
 -- AlterId
 o = s:option(Value, "alterId", translate("AlterId"))
 o.datatype = "port"
-o.default = 32
+o.default = "32"
 o.rmempty = true
 o:depends("type", "vmess")
 
@@ -201,6 +209,7 @@ o:depends("type", "ssr")
 o:depends("type", "vmess")
 o:depends("type", "socks5")
 o:depends("type", "trojan")
+o:depends({type = "snell", snell_version = "3"})
 
 o = s:option(ListValue, "obfs", translate("obfs-mode"))
 o.rmempty = true
@@ -395,7 +404,7 @@ o = s:option(Value, "interface_name", translate("interface-name"))
 o.rmempty = true
 o.placeholder = translate("eth0")
 
--- [[ interface-name ]]--
+-- [[ routing-mark ]]--
 o = s:option(Value, "routing_mark", translate("routing-mark"))
 o.rmempty = true
 o.placeholder = translate("2333")

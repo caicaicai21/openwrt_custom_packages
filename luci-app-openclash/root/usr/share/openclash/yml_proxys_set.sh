@@ -217,6 +217,7 @@ yml_servers_set()
    config_get "auth_pass" "$section" "auth_pass" ""
    config_get "psk" "$section" "psk" ""
    config_get "obfs_snell" "$section" "obfs_snell" ""
+   config_get "snell_version" "$section" "snell_version" ""
    config_get "sni" "$section" "sni" ""
    config_get "alpn" "$section" "alpn" ""
    config_get "http_path" "$section" "http_path" ""
@@ -661,6 +662,11 @@ cat >> "$SERVER_FILE" <<-EOF
     port: $port
     psk: $psk
 EOF
+   if [ -n "$snell_version" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+    version: "$snell_version"
+EOF
+   fi
    if [ "$obfs_snell" != "none" ] && [ ! -z "$host" ]; then
 cat >> "$SERVER_FILE" <<-EOF
     obfs-opts:
@@ -850,6 +856,7 @@ ${uci_set}Others="Others"
 
 [ "$config_auto_update" -eq 1 ] && [ "$new_servers_group_set" -eq 1 ] && {
 	${UCI_SET}servers_update="1"
+	${UCI_DEL_LIST}="all" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Auto - UrlTest" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Auto - UrlTest" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Proxy" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Proxy" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Asian TV" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Asian TV" >/dev/null 2>&1
@@ -1065,6 +1072,34 @@ EOF
 fi
 cat /tmp/Proxy_Provider >> $SERVER_FILE 2>/dev/null
 cat >> "$SERVER_FILE" <<-EOF
+  - name: Discovery Plus
+    type: select
+    proxies:
+      - Global TV
+      - DIRECT
+EOF
+cat /tmp/Proxy_Server >> $SERVER_FILE 2>/dev/null
+if [ -f "/tmp/Proxy_Provider" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+    use:
+EOF
+fi
+cat /tmp/Proxy_Provider >> $SERVER_FILE 2>/dev/null
+cat >> "$SERVER_FILE" <<-EOF
+  - name: DAZN
+    type: select
+    proxies:
+      - Global TV
+      - DIRECT
+EOF
+cat /tmp/Proxy_Server >> $SERVER_FILE 2>/dev/null
+if [ -f "/tmp/Proxy_Provider" ]; then
+cat >> "$SERVER_FILE" <<-EOF
+    use:
+EOF
+fi
+cat /tmp/Proxy_Provider >> $SERVER_FILE 2>/dev/null
+cat >> "$SERVER_FILE" <<-EOF
   - name: Spotify
     type: select
     proxies:
@@ -1190,6 +1225,8 @@ ${uci_set}GoogleFCM="Google FCM"
 ${uci_set}Scholar="Scholar"
 ${uci_set}Microsoft="Microsoft"
 ${uci_set}Netflix="Netflix"
+${uci_set}Discovery="Discovery Plus"
+${uci_set}DAZN="DAZN"
 ${uci_set}Disney="Disney"
 ${uci_set}Spotify="Spotify"
 ${uci_set}Steam="Steam"
@@ -1202,6 +1239,7 @@ ${uci_set}Others="Others"
 
 [ "$config_auto_update" -eq 1 ] && [ "$new_servers_group_set" -eq 1 ] && {
 	${UCI_SET}servers_update="1"
+	${UCI_DEL_LIST}="all" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Auto - UrlTest" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Auto - UrlTest" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Proxy" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Proxy" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Youtube" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Youtube" >/dev/null 2>&1
@@ -1213,6 +1251,8 @@ ${uci_set}Others="Others"
 	${UCI_DEL_LIST}="Asian TV" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Asian TV" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Global TV" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Global TV" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Netflix" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Netflix" >/dev/null 2>&1
+	${UCI_DEL_LIST}="Discovery Plus" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Discovery Plus" >/dev/null 2>&1
+	${UCI_DEL_LIST}="DAZN" >/dev/null 2>&1 && ${UCI_ADD_LIST}="DAZN" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Apple" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Apple" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Google FCM" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Google FCM" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Scholar" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Scholar" >/dev/null 2>&1
@@ -1278,6 +1318,7 @@ ${uci_set}Proxy="Proxy"
 ${uci_set}Others="Others"
 [ "$config_auto_update" -eq 1 ] && [ "$new_servers_group_set" -eq 1 ] && {
 	${UCI_SET}servers_update="1"
+	${UCI_DEL_LIST}="all" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Auto - UrlTest" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Auto - UrlTest" >/dev/null 2>&1
 	${UCI_DEL_LIST}="Proxy" >/dev/null 2>&1 && ${UCI_ADD_LIST}="Proxy" >/dev/null 2>&1
 }

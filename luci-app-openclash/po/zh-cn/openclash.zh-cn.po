@@ -197,8 +197,8 @@ msgstr "选择内核日志的默认输出模式"
 msgid "Only intranet allowed"
 msgstr "仅允许内网"
 
-msgid "When Enabled, The Control Panel And The Connection Broker Port Will Not Be Accessible From The Public Network, Not Support IPv6 Yet"
-msgstr "启用后将禁止从公网访问控制面板和连接代理端口, 暂不支持和IPv6代理同时启用"
+msgid "When Enabled, The Control Panel And The Connection Broker Port Will Not Be Accessible From The Public Network"
+msgstr "启用后将禁止从公网访问控制面板和连接代理端口"
 
 msgid "Redirect Local DNS Setting"
 msgstr "*本地DNS劫持"
@@ -285,8 +285,8 @@ msgstr "(通讯协议)"
 msgid "Proxy IPv6 Traffic"
 msgstr "IPv6 流量代理"
 
-msgid "Disable IPv6 DHCP To Avoid Abnormal Connection If You Do Not Use"
-msgstr "如果您不使用，请禁用IPv6的DHCP以避免连接异常"
+msgid "The Gateway and DNS of The Connected Device Must be The Router IP, Disable IPv6 DHCP To Avoid Abnormal Connection If You Do Not Use"
+msgstr "连接设备的网关和DNS须为路由器IP，如果您不使用，请禁用IPv6的DHCP以避免连接异常"
 
 msgid "IPv6 DNS Resolve"
 msgstr "允许IPv6类型DNS解析"
@@ -311,6 +311,9 @@ msgstr "代理集文件"
 
 msgid "Rule Provider File"
 msgstr "规则集文件"
+
+msgid "Core File"
+msgstr "内核文件"
 
 msgid "Upload"
 msgstr "上传"
@@ -576,8 +579,8 @@ msgstr "设置自定义Hosts，详细信息请参阅:"
 msgid "Set Custom Rules"
 msgstr "设置自定义规则（在上方规则设置中启用本功能后生效）"
 
-msgid "Set Custom Hosts, Only Work with Redir-Host Mode"
-msgstr "设置自定义Hosts，仅在Redir-Host模式下生效（不会覆盖配置文件设置）"
+msgid "Set Custom Hosts (Does Not Override Config Settings)"
+msgstr "设置自定义Hosts（不会覆盖配置文件设置）"
 
 msgid "Version Update"
 msgstr "版本更新"
@@ -1076,6 +1079,9 @@ msgstr "配置文件编辑"
 msgid "Delete All File"
 msgstr "删除所有文件"
 
+msgid "SS/SSR/Vmess or Other Link And Subscription Address is Supported When Online Subscription Conversion is Enabled, Multiple Links Should be One Per Line or Separated By |"
+msgstr "在线订阅转换启用时支持：SS/SSR/Vmess等节点链接和订阅链接，多个链接请每行一个或用 | 分隔"
+
 msgid "Template Name"
 msgstr "订阅转换模板"
 
@@ -1298,14 +1304,14 @@ msgstr "注意：客户端可能无法更新，因为squashfs格式的固件更�
 msgid "Compiled Version Selected"
 msgstr "已选择编译版本"
 
-msgid "CPU Architecture (OS)"
-msgstr "处理器架构（OS）"
+msgid "Release Branch Selected"
+msgstr "已选择更新分支"
+
+msgid "CPU Architecture"
+msgstr "处理器架构"
 
 msgid "Last Check Update"
 msgstr "上次检查更新时间"
-
-msgid "CPU Architecture (OPKG)"
-msgstr "处理器架构（OPKG）"
 
 msgid "Current Core"
 msgstr "当前内核版本"
@@ -1806,13 +1812,13 @@ msgid "Proxy-providers That no Longer Exists in Subscription"
 msgstr "订阅中已不存在的代理集..."
 
 msgid "Proxies That no Longer Exists in Subscription"
-msgstr "订阅中已不存在的代理集..."
+msgstr "订阅中已不存在的节点..."
 
 msgid "Read Successful!"
 msgstr "读取完成！"
 
 msgid "Write Successful!"
-msgstr "读取完成！"
+msgstr "写入完成！"
 
 msgid "Creating By Using Connershua (rule set) Rules..."
 msgstr "使用ConnersHua(规则集)规则创建中..."
@@ -1843,9 +1849,6 @@ msgstr "错误: 代理集文件下载失败，请到日志页面查看详细错�
 
 msgid "Error: Failed To Download Rule-providers, Please Check The Log Page For Detailed error information!"
 msgstr "错误: 规则集文件下载失败，请到日志页面查看详细错误信息！"
-
-msgid "Warning: Providers File Check Timeout, If Failed To start, Please Check The Log Page For Detailed error information!"
-msgstr "警告: 代理集文件检查超时，如启动失败请到日志页面查看详细信息！"
 
 msgid "Error: Nameserver Option Must Be Setted, Stop Customing DNS Servers"
 msgstr "错误: 配置文件DNS选项下的Nameserver必须设置服务器，已停止设置自定义DNS服务器！"
@@ -2144,16 +2147,16 @@ msgstr "Dler Cloud 签到失败，结果："
 msgid "Downloading Rule..."
 msgstr "正在下载规则..."
 
-msgid "Downloading Fail"
+msgid "Download Failed"
 msgstr "下载失败"
 
-msgid "Downloading Successful"
+msgid "Download Successful"
 msgstr "下载成功"
 
 msgid "Rule No Change"
 msgstr "规则没有更新"
 
-msgid "Downloading Timeout"
+msgid "Download Timeout"
 msgstr "下载超时"
 
 msgid "Rule Project:"
@@ -2210,40 +2213,40 @@ msgstr "警告：【Rule】写法已不再支持，自动替换为rules"
 msgid "Warning: rule-provider is no longer used. Auto replaced by rule-providers"
 msgstr "警告：【rule-provider】写法已不再支持，自动替换为rule-providers"
 
-msgid "Error: Load File Error,"
+msgid "Error: Load File Failed,"
 msgstr "错误：文件解析失败，"
 
-msgid "Error: Set General Error,"
+msgid "Error: Set General Failed,"
 msgstr "错误：修改General配置失败，"
 
-msgid "Error: Set Hosts Rules Error,"
+msgid "Error: Set Hosts Rules Failed,"
 msgstr "错误：修改Hosts配置失败，"
 
-msgid "Error: Set Fake-IP-Filter Error,"
+msgid "Error: Set Fake-IP-Filter Failed,"
 msgstr "错误：修改Fake-IP-Filter配置失败，"
 
-msgid "Error: Set Nameserver-Policy Error,"
+msgid "Error: Set Nameserver-Policy Failed,"
 msgstr "错误：修改Nameserver-Policy配置失败，"
 
-msgid "Error: Set Custom Rules Error,"
+msgid "Error: Set Custom Rules Failed,"
 msgstr "错误：设置自定义规则失败，"
 
-msgid "Error: Set BT/P2P DIRECT Rules Error,"
+msgid "Error: Set BT/P2P DIRECT Rules Failed,"
 msgstr "错误：设置仅代理命中规则流量（BT/P2P直连）失败，"
 
-msgid "Error: Set 198.18.0.1/16 REJECT Rule Error,"
+msgid "Error: Set 198.18.0.1/16 REJECT Rule Failed,"
 msgstr "错误：设置198.18.0.1/16（REJECT）规则失败，"
 
-msgid "Error: Set lhie1 Rules Error,"
+msgid "Error: Set lhie1 Rules Failed,"
 msgstr "错误：设置第三方规则（lhie1）失败，"
 
-msgid "Error: Set ConnersHua Rules Error,"
+msgid "Error: Set ConnersHua Rules Failed,"
 msgstr "错误：设置第三方规则（ConnersHua）失败，"
 
-msgid "Error: Set ConnersHua Return Rules Error,"
+msgid "Error: Set ConnersHua Return Rules Failed,"
 msgstr "错误：设置第三方规则（ConnersHua 回国）失败，"
 
-msgid "Error: Filter Proxies Error,"
+msgid "Error: Filter Proxies Failed,"
 msgstr "错误：节点筛选失败，"
 
 msgid "Error: Unable To Parse Config File,"
@@ -2252,44 +2255,38 @@ msgstr "错误：配置文件解析失败，"
 msgid "Error: Unable To Parse Updated Rules File,"
 msgstr "错误：更新的规则文件解析失败，"
 
-msgid "Error: Edit Provider Path Error,"
+msgid "Error: Edit Provider Path Failed,"
 msgstr "错误：修改集路径失败，"
 
-msgid "Error: Set Url-Test Group Tolerance Error,"
+msgid "Error: Set Url-Test Group Tolerance Failed,"
 msgstr "错误：修改Url-Test策略组容忍值失败，"
 
-msgid "Error: Game Rule Merge Error,"
+msgid "Error: Game Rule Merge Failed,"
 msgstr "错误：游戏规则合并失败，"
 
-msgid "Error: Game Proxy Merge Error,"
+msgid "Error: Game Proxy Merge Failed,"
 msgstr "错误：游戏规则策略组合并失败，"
 
-msgid "Error: Rule Set Add Error,"
+msgid "Error: Rule Set Add Failed,"
 msgstr "错误：规则集Rule-Set规则添加失败，"
 
-msgid "Error: Custom Rule Provider Merge Error,"
+msgid "Error: Custom Rule Provider Merge Failed,"
 msgstr "错误：规则集Rule Provider合并失败，"
 
-msgid "Error: Restore Backup Rules Error,"
+msgid "Error: Restore Backup Rules Failed,"
 msgstr "错误：还原默认规则失败，"
 
-msgid "Error: Restore Backup Rules Error,"
-msgstr "错误：还原默认规则失败，"
-
-msgid "Error: Resolve Proxy-provider Error,"
+msgid "Error: Resolve Proxy-providers Failed,"
 msgstr "错误：解析代理集失败，"
 
-msgid "Error: Resolve Proxy Error,"
+msgid "Error: Resolve Proxies Failed,"
 msgstr "错误：节点解析失败，"
 
-msgid "Error: Resolve Proxy-group Error,"
+msgid "Error: Resolve Groups Failed,"
 msgstr "错误：策略组解析失败，"
 
-msgid "Error: Set default-nameserver Error,"
+msgid "Error: Set default-nameserver Failed,"
 msgstr "错误：修改default-nameserver配置失败，"
-
-msgid "Error: Netflix IP Rules Complete Error,"
-msgstr "错误：Netflix IP 规则补全失败，"
 
 msgid "switching succeeded!"
 msgstr "切换成功！"
@@ -2474,29 +2471,14 @@ msgstr "展开策略组"
 msgid "Automatically Expand The Group When Selected"
 msgstr "自动展开嵌套的策略组并进行解锁检测，启用后可能会造成网络不稳定"
 
-msgid "Netflix Group Filter Keywords"
-msgstr "Netflix 策略组筛选关键字"
+msgid "Group Filter"
+msgstr "策略组筛选"
 
-msgid "Disney Plus Group Filter Keywords"
-msgstr "Disney Plus 策略组筛选关键字"
+msgid "Unlock Region Filter"
+msgstr "解锁区域筛选"
 
-msgid "HBO Now Group Filter Keywords"
-msgstr "HBO Now 策略组筛选关键字"
-
-msgid "HBO Max Group Filter Keywords"
-msgstr "HBO Max 策略组筛选关键字"
-
-msgid "HBO GO Asia Group Filter Keywords"
-msgstr "HBO GO Asia 策略组筛选关键字"
-
-msgid "YouTube Premium Group Filter Keywords"
-msgstr "YouTube Premium 策略组筛选关键字"
-
-msgid "TVB Anywhere+ Group Filter Keywords"
-msgstr "TVB Anywhere+ 策略组筛选关键字"
-
-msgid "Amazon Prime Video Group Filter Keywords"
-msgstr "Amazon Prime Video 策略组筛选关键字"
+msgid "Unlock Nodes Filter"
+msgstr "解锁节点筛选"
 
 msgid "Tip: Start Auto Select Proxy For Netflix Unlock..."
 msgstr "提示：开始自动选择（检测）Netflix 解锁节点..."
@@ -2522,6 +2504,15 @@ msgstr "提示：开始自动选择（检测）TVB Anywhere+ 解锁节点..."
 msgid "Tip: Start Auto Select Proxy For Amazon Prime Video Unlock..."
 msgstr "提示：开始自动选择（检测）Amazon Prime Video 解锁节点..."
 
+msgid "Tip: Start Auto Select Proxy For DAZN Unlock..."
+msgstr "提示：开始自动选择（检测）DAZN 解锁节点..."
+
+msgid "Tip: Start Auto Select Proxy For Paramount Plus Unlock..."
+msgstr "提示：开始自动选择（检测）Paramount Plus 解锁节点..."
+
+msgid "Tip: Start Auto Select Proxy For Discovery Plus Unlock..."
+msgstr "提示：开始自动选择（检测）Discovery Plus 解锁节点..."
+
 msgid "Netflix Group:"
 msgstr "Netflix 策略组："
 
@@ -2545,6 +2536,15 @@ msgstr "Amazon Prime Video 策略组："
 
 msgid "YouTube Premium Group:"
 msgstr "YouTube Premium 策略组："
+
+msgid "DAZN Group:"
+msgstr "DAZN 策略组："
+
+msgid "Paramount Plus Group:"
+msgstr "Paramount Plus 策略组："
+
+msgid "Discovery Plus Group:"
+msgstr "Discovery Plus 策略组："
 
 msgid "full support."
 msgstr "完整解锁。"
@@ -2576,8 +2576,14 @@ msgstr "仅支持自制剧！开始进行解锁节点自动选择..."
 msgid "unlock test faild! start auto select unlock proxy..."
 msgstr "解锁检测失败！开始进行解锁节点自动选择..."
 
-msgid "It Will Be Searched According To The Keywords When Auto Search Group Fails"
-msgstr "策略组自动获取失败时将会根据关键字进行匹配"
+msgid "It Will Be Searched According To The Regex When Auto Search Group Fails"
+msgstr "策略组自动获取失败时将会根据正则表达式进行匹配"
+
+msgid "It Will Be Selected Region According To The Regex"
+msgstr "解锁区域将会根据正则表达式进行匹配"
+
+msgid "It Will Be Selected Nodes According To The Regex"
+msgstr "解锁节点将会根据正则表达式进行匹配"
 
 msgid "not support unlock!"
 msgstr "不支持解锁！"
@@ -2592,16 +2598,154 @@ msgid "unlock node auto selected successfully, the current selected is"
 msgstr "解锁节点自动选择成功，当前选择的是"
 
 msgid "unlock node auto selected failed, no node available, rolled back to the"
-msgstr "解锁节点自动选择失败，无可用节点，回退到"
+msgstr "解锁节点自动选择失败，无完整解锁节点，回退到"
 
 msgid ", area:"
 msgstr "，区域："
 
-msgid "failed to search based on keywords and automatically obtain the group, please confirm the validity of the keywords!"
+msgid "failed to search based on keywords and automatically obtain the group, please confirm the validity of the regex!"
 msgstr "根据关键字搜索且自动获取策略组失败，请确认关键字的有效性！"
+
+msgid "unlock node auto selected failed, no node match the regex, rolled back to other full support node"
+msgstr "解锁节点自动选择失败，未找到区域匹配的节点，回退到其他区域的解锁节点"
+
+msgid "full support but not match the regex!"
+msgstr "完整解锁但区域不匹配！"
+
+msgid "but not match the regex! the type of group is not select, auto select could not work!"
+msgstr "完整解锁但区域不匹配！当前策略组类型非 Select，无法进行自动选择！"
+
+msgid "full support but not match the regex! start auto select unlock proxy..."
+msgstr "完整解锁但区域不匹配！开始进行解锁节点自动选择..."
+
+msgid "unlock node test finished, rolled back to the full support node"
+msgstr "解锁检测完成，回退到完整解锁的节点"
+
+msgid "unlock node test finished, no node match the regex, rolled back to other full support node"
+msgstr "解锁检测完成，未找到区域匹配的节点，回退到其他区域的解锁节点"
+
+msgid "unlock node test finished, no node available, rolled back to the"
+msgstr "解锁检测完成，无完整解锁节点，回退到"
+
+msgid "no nodes name match the regex!"
+msgstr "未找到名称匹配的节点!"
 
 msgid "DNS Remote"
 msgstr "*远程域名解析"
 
 msgid "Add DNS Remote Support For Redir-Host"
 msgstr "Redir-Host模式强制进行远程域名解析"
+
+msgid "Bypass Gateway Compatible"
+msgstr "旁路网关（旁路由）兼容"
+
+msgid "If The Ntwork Cannot be Connected in Bypass Gateway Mode, Please Try to Enable."
+msgstr "旁路网关（旁路由）模式下网络无法连接时请尝试启用。"
+
+msgid "Suggestion: If The Device Does Not Have WLAN, Please Disable The Lan Interface's Bridge Option"
+msgstr "建议：如果设备没有WLAN，请禁用Lan接口的桥接接口选项"
+
+msgid "Github Address Modify"
+msgstr "Github 地址修改"
+
+msgid "Modify The Github Address In The Config And OpenClash With Proxy(CDN) To Prevent File Download Faild. Format Reference:"
+msgstr "使用指定代理（CDN）反代插件和配置文件中的Github地址，以防止文件下载失败，格式参考："
+
+msgid "File Edit"
+msgstr "文件编辑"
+
+msgid "Create File"
+msgstr "新建文件"
+
+msgid "Paste the name of the new file (including the extension) here:"
+msgstr "请在此输入要新建的文件名称（含扩展名）："
+
+msgid "Delay Start (s)"
+msgstr "延迟启动（秒）"
+
+msgid "Delay Start On Boot"
+msgstr "系统重启时延迟启动"
+
+msgid "Enable Delay Start, OpenClash Will Start After"
+msgstr "延迟启动已启用，OpenClash 将在"
+
+msgid "Secends..."
+msgstr "秒后开始启动..."
+
+msgid "Waiting for command to complete..."
+msgstr "等待命令执行完成..."
+
+msgid "Collecting data..."
+msgstr "正在收集数据..."
+
+msgid "Flushing..."
+msgstr "清理中..."
+
+msgid "Flush Fail"
+msgstr "清理失败"
+
+msgid "Flush Successful"
+msgstr "清理成功"
+
+msgid "Flush Timeout"
+msgstr "清理超时"
+
+msgid "Flush"
+msgstr "清理"
+
+msgid "Flush Fake-IP Cache"
+msgstr "Fake-IP 持久化缓存清理"
+
+msgid "No Specify Upload File"
+msgstr "未选择上传文件"
+
+msgid "Use Rule Provider"
+msgstr "使用规则集"
+
+msgid "Note: Please Make Sure Backend Service Supports This Feature"
+msgstr "注意：请确保您选择的后端服务支持此功能，否则可能导致内核启动失败"
+
+msgid "Rename"
+msgstr "重命名"
+
+msgid "Paste the new file name (including the extension) here:"
+msgstr "请在此输入新文件名（含扩展名）："
+
+msgid "Illegal extension!"
+msgstr "不支持的扩展名！"
+
+msgid "Manual Test"
+msgstr "手动测试"
+
+msgid "Unlock Test(Select)"
+msgstr "解锁检测(选择)"
+
+msgid "All Proxies Test"
+msgstr "测试所有节点"
+
+msgid "Something Wrong While Testing..."
+msgstr "发生了一些错误，测试失败..."
+
+msgid "Network instability may occur during testing, Are you sure want to start test?"
+msgstr "测试过程中可能会造成网络不稳定,确定要开始测试吗？"
+
+msgid "Error: Edit Vmess Compatible Failed,"
+msgstr "错误：Vmess节点兼容性修改失败，"
+
+msgid "Subscription Info"
+msgstr "订阅信息"
+
+msgid "No Sub Info Found"
+msgstr "无订阅信息"
+
+msgid "Sub Info Get Error"
+msgstr "订阅信息获取失败"
+
+msgid "Router-Self Proxy"
+msgstr "路由本机代理"
+
+msgid "Only Supported for Rule Mode, ALL Functions In Stream Enhance Tag Will Not Work After Disable"
+msgstr "仅支持规则（Rule）模式，其他模式默认分流，禁用后将无法使用流媒体增强标签中的所有功能"
+
+msgid "Error: Set Router Self Proxy Rule Failed,"
+msgstr "错误：修改路由自身代理规则失败，"
