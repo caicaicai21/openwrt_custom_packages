@@ -6,6 +6,7 @@ CLASH_CONFIG="/etc/openclash"
 LOG_FILE="/tmp/openclash.log"
 PROXY_FWMARK="0x162"
 PROXY_ROUTE_TABLE="0x162"
+ipv6_enable=$(uci -q get openclash.config.ipv6_enable)
 enable_redirect_dns=$(uci -q get openclash.config.enable_redirect_dns)
 dns_port=$(uci -q get openclash.config.dns_port)
 disable_masq_cache=$(uci -q get openclash.config.disable_masq_cache)
@@ -23,6 +24,7 @@ CRASH_NUM=0
 CFG_UPDATE_INT=1
 STREAM_DOMAINS_PREFETCH=1
 STREAM_AUTO_SELECT=1
+FW4="$(command -v fw4)"
 sleep 60
 
 while :;
@@ -45,6 +47,8 @@ do
    stream_auto_select_dazn=$(uci -q get openclash.config.stream_auto_select_dazn || echo 0)
    stream_auto_select_paramount_plus=$(uci -q get openclash.config.stream_auto_select_paramount_plus || echo 0)
    stream_auto_select_discovery_plus=$(uci -q get openclash.config.stream_auto_select_discovery_plus || echo 0)
+   stream_auto_select_bilibili=$(uci -q get openclash.config.stream_auto_select_bilibili || echo 0)
+   stream_auto_select_google_not_cn=$(uci -q get openclash.config.stream_auto_select_google_not_cn || echo 0)
    
    enable=$(uci -q get openclash.config.enable)
 
@@ -60,26 +64,27 @@ if [ "$enable" -eq 1 ]; then
 	if ! pidof clash >/dev/null; then
 	   CRASH_NUM=$(expr "$CRASH_NUM" + 1)
 	   if [ "$CRASH_NUM" -le 3 ]; then
-	      RAW_CONFIG_FILE=$(uci -q get openclash.config.config_path)
-	      CONFIG_FILE="/etc/openclash/$(uci -q get openclash.config.config_path |awk -F '/' '{print $5}' 2>/dev/null)"
-	      LOG_OUT "Watchdog: Clash Core Problem, Restart..."
-	      if [ -z "$_koolshare" ]; then
-	         touch /tmp/openclash.log 2>/dev/null
-            chmod o+w /etc/openclash/proxy_provider/* 2>/dev/null
-            chmod o+w /etc/openclash/rule_provider/* 2>/dev/null
-            chmod o+w /etc/openclash/history/* 2>/dev/null
-            chmod o+w /tmp/openclash.log 2>/dev/null
-            chmod o+w /etc/openclash/cache.db 2>/dev/null
-            chown nobody:nogroup /etc/openclash/core/* 2>/dev/null
-            capabilties="cap_sys_resource,cap_dac_override,cap_net_raw,cap_net_bind_service,cap_net_admin,cap_sys_ptrace"
-            capsh --caps="${capabilties}+eip" -- -c "capsh --user=nobody --addamb='${capabilties}' -- -c 'nohup $CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1 &'" >> $LOG_FILE 2>&1
-        else
-            nohup $CLASH -d $CLASH_CONFIG -f "$CONFIG_FILE" >> $LOG_FILE 2>&1 &
-        fi
+            RAW_CONFIG_FILE=$(uci -q get openclash.config.config_path)
+            CONFIG_FILE="/etc/openclash/$(uci -q get openclash.config.config_path |awk -F '/' '{print $5}' 2>/dev/null)"
+            LOG_OUT "Watchdog: Clash Core Problem, Restart..."
+            if [ -z "$_koolshare" ]; then
+               touch /tmp/openclash.log 2>/dev/null
+               chmod o+w /etc/openclash/proxy_provider/* 2>/dev/null
+               chmod o+w /etc/openclash/rule_provider/* 2>/dev/null
+               chmod o+w /etc/openclash/history/* 2>/dev/null
+               chmod o+w /tmp/openclash.log 2>/dev/null
+               chmod o+w /etc/openclash/cache.db 2>/dev/null
+               chown nobody:nogroup /etc/openclash/core/* 2>/dev/null
+               capabilties="cap_sys_resource,cap_dac_override,cap_net_raw,cap_net_bind_service,cap_net_admin,cap_sys_ptrace"
+               capsh --caps="${capabilties}+eip" -- -c "capsh --user=nobody --addamb='${capabilties}' -- -c 'nohup $CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1 &'" >> $LOG_FILE 2>&1
+         else
+               nohup $CLASH -d $CLASH_CONFIG -f "$CONFIG_FILE" >> $LOG_FILE 2>&1 &
+         fi
 	      sleep 3
 	      if [ "$core_type" == "TUN" ] || [ "$core_type" == "Meta" ]; then
 	         ip route replace default dev utun table "$PROXY_ROUTE_TABLE" 2>/dev/null
 	         ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE" 2>/dev/null
+            ifconfig utun mtu 65535 >/dev/null 2>&1
 	      fi
 	      sleep 60
 	      continue
@@ -105,16 +110,73 @@ fi
 
 ## 端口转发重启
    last_line=$(iptables -t nat -nL PREROUTING --line-number |awk '{print $1}' 2>/dev/null |awk 'END {print}' |sed -n '$p')
-   op_line=$(iptables -t nat -nL PREROUTING --line-number |grep "openclash" 2>/dev/null |awk '{print $1}' 2>/dev/null |head -1)
+   op_line=$(iptables -t nat -nL PREROUTING --line-number |grep "openclash " 2>/dev/null |awk '{print $1}' 2>/dev/null |head -1)
    if [ "$last_line" != "$op_line" ] && [ -n "$op_line" ]; then
-      pre_lines=$(iptables -nvL PREROUTING -t nat |sed 1,2d |sed -n '/openclash/=' 2>/dev/null |sort -rn)
+      pre_lines=$(iptables -nvL PREROUTING -t nat |sed 1,2d |sed -n '/openclash /=' 2>/dev/null |sort -rn)
       for pre_line in $pre_lines; do
          iptables -t nat -D PREROUTING "$pre_line" >/dev/null 2>&1
       done >/dev/null 2>&1
       iptables -t nat -A PREROUTING -p tcp -j openclash
-      LOG_OUT "Watchdog: Reset Firewall For Enabling Redirect..."
+      LOG_OUT "Watchdog: Setting Firewall For Enabling Redirect..."
    fi
-   
+
+## Localnetwork 刷新
+   lan_ip_cidrs=$(ip route | grep "/" | awk '{print $1}' | grep -vE "^198.18" 2>/dev/null)
+   lan_ip6_cidrs=$(ip -6 route | grep "/" | awk '{print $1}' | grep -vE "^unreachable" 2>/dev/null)
+   wan_ip4s=$(ifconfig | grep 'inet addr' | awk '{print $2}' | cut -d: -f2 | grep -vE "(^198.18|^192.168|^127.0)" 2>/dev/null)
+   if [ -n "$FW4" ]; then
+      if [ -n "$lan_ip_cidrs" ]; then
+         for lan_ip_cidr in $lan_ip_cidrs; do
+            nft add element inet fw4 localnetwork { "$lan_ip_cidr" } 2>/dev/null
+         done
+      fi
+
+      if [ -n "$wan_ip4s" ]; then
+         for wan_ip4 in $wan_ip4s; do
+            nft add element inet fw4 localnetwork { "$wan_ip4" } 2>/dev/null
+         done
+      fi
+
+      if [ "$ipv6_enable" -eq 1 ]; then
+         if [ -n "$lan_ip6_cidrs" ]; then
+            for lan_ip6_cidr in $lan_ip6_cidrs; do
+               nft add element inet fw4 localnetwork6 { "$lan_ip6_cidr" } 2>/dev/null
+            done
+         fi
+
+         if [ -n "$wan_ip6s" ]; then
+            for wan_ip6 in $wan_ip6s; do
+               nft add element inet fw4 localnetwork6 { "$wan_ip6" } 2>/dev/null
+            done
+         fi
+      fi
+   else
+      if [ -n "$lan_ip_cidrs" ]; then
+         for lan_ip_cidr in $lan_ip_cidrs; do
+            ipset add localnetwork "$lan_ip_cidr" 2>/dev/null
+         done
+      fi
+
+      if [ -n "$wan_ip4s" ]; then
+         for wan_ip4 in $wan_ip4s; do
+            ipset add localnetwork "$wan_ip4" 2>/dev/null
+         done
+      fi
+      if [ "$ipv6_enable" -eq 1 ]; then
+         if [ -n "$lan_ip6_cidrs" ]; then
+            for lan_ip6_cidr in $lan_ip6_cidrs; do
+               ipset add localnetwork6 "$lan_ip6_cidr" 2>/dev/null
+            done
+         fi
+
+         if [ -n "$wan_ip6s" ]; then
+            for wan_ip6 in $wan_ip6s; do
+               ipset add localnetwork6 "$wan_ip6" 2>/dev/null
+            done
+         fi
+      fi
+   fi
+
 ## DNS转发劫持
    if [ "$enable_redirect_dns" -ne 0 ]; then
       if [ -z "$(uci -q get dhcp.@dnsmasq[0].server |grep "$dns_port")" ] || [ ! -z "$(uci -q get dhcp.@dnsmasq[0].server |awk -F ' ' '{print $2}')" ]; then
@@ -191,6 +253,14 @@ fi
             if [ "$stream_auto_select_discovery_plus" -eq 1 ]; then
                LOG_OUT "Tip: Start Auto Select Proxy For Discovery Plus Unlock..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Discovery Plus" >> $LOG_FILE
+            fi
+            if [ "$stream_auto_select_bilibili" -eq 1 ]; then
+               LOG_OUT "Tip: Start Auto Select Proxy For Bilibili Unlock..."
+               /usr/share/openclash/openclash_streaming_unlock.lua "Bilibili" >> $LOG_FILE
+            fi
+            if [ "$stream_auto_select_google_not_cn" -eq 1 ]; then
+               LOG_OUT "Tip: Start Auto Select Proxy For Google Not CN Unlock..."
+               /usr/share/openclash/openclash_streaming_unlock.lua "Google" >> $LOG_FILE
             fi
          fi
       fi
