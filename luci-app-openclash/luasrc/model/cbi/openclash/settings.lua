@@ -25,6 +25,7 @@ m.description = translate("Note: To restore the default configuration, try acces
 "<br/>"..font_green..translate("Note: Turning on secure DNS in the browser will cause abnormal shunting, please be careful to turn it off")..font_off..
 "<br/>"..font_green..translate("Note: Some software will modify the device HOSTS, which will cause abnormal shunt, please pay attention to check")..font_off..
 "<br/>"..font_green..translate("Note: Game proxy please use nodes except Vmess")..font_off..
+"<br/>"..font_green..translate("Note: If you need to perform client access control in Fake-ip mode, please change the DNS hijacking mode to firewall forwarding")..font_off..
 "<br/>"..translate("Note: The default proxy routes local traffic, BT, PT download, etc., please use redir mode as much as possible and pay attention to traffic avoidance")..
 "<br/>"..translate("Note: If the connection is abnormal, please follow the steps on this page to check first")..": ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://github.com/vernesong/OpenClash/wiki/%E7%BD%91%E7%BB%9C%E8%BF%9E%E6%8E%A5%E5%BC%82%E5%B8%B8%E6%97%B6%E6%8E%92%E6%9F%A5%E5%8E%9F%E5%9B%A0\")'>"..translate("Click to the page").."</a>"
 
@@ -48,7 +49,7 @@ s:tab("debug", translate("Debug Logs"))
 s:tab("dlercloud", translate("Dler Cloud"))
 
 o = s:taboption("op_mode", Flag, "enable_meta_core", font_red..bold_on..translate("Enable Meta Core")..bold_off..font_off)
-o.description = font_red..bold_on..translate("Some Premium Core Features are Unavailable, For Other More Useful Functions Go Wiki:")..bold_off..font_off.." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://clash-meta.wiki/\")'>https://clash-meta.wiki/</a>"
+o.description = font_red..bold_on..translate("Some Premium Core Features are Unavailable, For Other More Useful Functions Go Wiki:")..bold_off..font_off.." ".."<a href='javascript:void(0)' onclick='javascript:return winOpen(\"https://wiki.metacubex.one/\")'>https://wiki.metacubex.one/</a>"
 o.default = 0
 
 o = s:taboption("op_mode", ListValue, "en_mode", font_red..bold_on..translate("Select Mode")..bold_off..font_off)
@@ -791,39 +792,39 @@ o.template = "openclash/other_stream_option"
 o.value = "Google"
 o:depends("stream_auto_select_google_not_cn", "1")
 
---ChatGPT
-o = s:taboption("stream_enhance", Flag, "stream_auto_select_chatgpt", font_red..translate("ChatGPT")..font_off)
+--OpenAI
+o = s:taboption("stream_enhance", Flag, "stream_auto_select_openai", font_red..translate("OpenAI")..font_off)
 o.default = 0
 o:depends("stream_auto_select", "1")
 
-o = s:taboption("stream_enhance", Value, "stream_auto_select_group_key_chatgpt", translate("Group Filter"))
-o.default = "ChatGPT"
-o.placeholder = "ChatGPT"
+o = s:taboption("stream_enhance", Value, "stream_auto_select_group_key_openai", translate("Group Filter"))
+o.default = "OpenAI|ChatGPT"
+o.placeholder = "OpenAI|ChatGPT"
 o.description = translate("It Will Be Searched According To The Regex When Auto Search Group Fails")
-o:depends("stream_auto_select_chatgpt", "1")
+o:depends("stream_auto_select_openai", "1")
 
-o = s:taboption("stream_enhance", Value, "stream_auto_select_region_key_chatgpt", translate("Unlock Region Filter"))
+o = s:taboption("stream_enhance", Value, "stream_auto_select_region_key_openai", translate("Unlock Region Filter"))
 o.default = ""
 o.placeholder = "US"
 o.description = translate("It Will Be Selected Region(Country Shortcode) According To The Regex")
-o:depends("stream_auto_select_chatgpt", "1")
+o:depends("stream_auto_select_openai", "1")
 function o.validate(self, value)
-	if value ~= m.uci:get("openclash", "config", "stream_auto_select_region_key_chatgpt") then
-		fs.unlink("/tmp/openclash_ChatGPT_region")
+	if value ~= m.uci:get("openclash", "config", "stream_auto_select_region_key_openai") then
+		fs.unlink("/tmp/openclash_OpenAI_region")
 	end
 	return value
 end
 
-o = s:taboption("stream_enhance", Value, "stream_auto_select_node_key_chatgpt", translate("Unlock Nodes Filter"))
+o = s:taboption("stream_enhance", Value, "stream_auto_select_node_key_openai", translate("Unlock Nodes Filter"))
 o.default = ""
 o.description = translate("It Will Be Selected Nodes According To The Regex")
-o:depends("stream_auto_select_chatgpt", "1")
+o:depends("stream_auto_select_openai", "1")
 
-o = s:taboption("stream_enhance", DummyValue, "ChatGPT", translate("Manual Test"))
+o = s:taboption("stream_enhance", DummyValue, "OpenAI", translate("Manual Test"))
 o.rawhtml = true
 o.template = "openclash/other_stream_option"
-o.value = "ChatGPT"
-o:depends("stream_auto_select_chatgpt", "1")
+o.value = "OpenAI"
+o:depends("stream_auto_select_openai", "1")
 
 ---- update Settings
 o = s:taboption("rules_update", Flag, "other_rule_auto_update", translate("Auto Update"))
@@ -1108,6 +1109,10 @@ o.template="openclash/switch_dashboard"
 o.rawhtml = true
 
 o = s:taboption("dashboard", DummyValue, "Yacd", translate("Switch(Update) Yacd Version"))
+o.template="openclash/switch_dashboard"
+o.rawhtml = true
+
+o = s:taboption("dashboard", DummyValue, "Metacubexd", translate("Update Metacubexd Version"))
 o.template="openclash/switch_dashboard"
 o.rawhtml = true
 
